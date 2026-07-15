@@ -1,0 +1,73 @@
+.dashboard-page {
+  min-height: 100vh;
+  background: var(--background);
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-sans);
+}
+
+.dashboard-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 32px;
+  border-bottom: 1px solid var(--border-bottom);
+}
+
+.dashboard-brand {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+}
+
+.dashboard-user {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.dashboard-username {
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.dashboard-logout {
+  background: none;
+  border: none;
+  font-size: 14px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0;
+  font-family: var(--font-sans);
+}
+
+.dashboard-logout:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
+.dashboard-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dashboard-import-button {
+  background: var(--ink);
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  padding: 14px 32px;
+  font-size: 15px;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.dashboard-import-button:hover {
+  background: var(--ink-hover);
+}
