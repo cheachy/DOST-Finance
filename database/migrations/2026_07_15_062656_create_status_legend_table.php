@@ -13,9 +13,9 @@ return new class extends Migration
     {
         Schema::create('status_legend', function (Blueprint $table) {
             $table->id();
-            $table->string('status_code', 50)->unique();
-            $table->string('label', 255);
-            $table->string('fill_color_hex', 7);
+            $table->string('status_code', 50)->unique();        // 'current_year_dd'
+            $table->string('label', 255);                       // 'CURRENT YEAR DD'
+            $table->string('fill_color_hex', 7)->nullable();    // NULL = 'I' status
             $table->timestamps();
         });
     }
