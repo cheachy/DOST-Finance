@@ -22,11 +22,30 @@ class User extends Authenticatable
      *
      * @return array<string, string>
      */
-    protected function casts(): array
-    {
+    protected function casts(): array {
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function transactions() {
+        return $this->hasMany(Transaction::class);
+    }
+ 
+    public function excelImports() {
+        return $this->hasMany(ExcelImport::class, 'uploaded_by');
+    }
+ 
+    public function reportExports() {
+        return $this->hasMany(ReportExport::class, 'generated_by');
+    }
+ 
+    public function auditLogs() {
+        return $this->hasMany(AuditLog::class);
+    }
+ 
+    public function fundReceipts() {
+        return $this->hasMany(FundReceipt::class);
     }
 }

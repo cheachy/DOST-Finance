@@ -57,7 +57,7 @@ return new class extends Migration
             $table->index(['account_id', 'date', 'dv_sequence', 'obr_sequence', 'particulars'], 'idx_transactions_dedup');
         });
 
-        DB::statement("ALTER TABLE transactions ADD CONSTRAINT chk_transactions_payment_mode CHECK (payment_mode IN ('check', 'ada')");
+        DB::statement("ALTER TABLE transactions ADD CONSTRAINT chk_transactions_payment_mode CHECK (payment_mode IN ('check', 'ada'))");
     }
 
     /**

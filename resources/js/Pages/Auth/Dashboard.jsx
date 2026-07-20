@@ -1,77 +1,72 @@
-import { useRef } from "react";
-import { Head, Link, usePage } from "@inertiajs/react";
+import { Head, Link, usePage, router } from "@inertiajs/react";
+import { useRef, useState } from "react";
 
 export default function Dashboard() {
-  const { auth } = usePage().props;
+  const { auth, status, errors } = usePage().props;
   const fileInputRef = useRef(null);
+  const [processing, setProcessing] = useState(false);
 
-  // Select file 
-  const triggerFileSelect = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = (e) => {
+  function handleFileChange(e) {
     const file = e.target.files[0];
-    if (file) {
-      console.log("File selected:", file.name);
-      // PHPSpreadsheet and TabularJS codes up here
-    }
-  };
+    if (!file) return;
+
+    setProcessing(true);
+    router.post(
+      "/imports",
+      { file },
+      {
+        forceFormData: true,
+        onFinish: () => {
+          setProcessing(false);
+          e.target.value = ""; // allow re-selecting the same file later
+        },
+      }
+    );
+  }
 
   return (
     <div className="dashboard-page">
       <Head title="Dashboard" />
 
-      {/* Navigation Bar */}
       <header className="dashboard-topbar">
         <p className="dashboard-brand">Talaan</p>
 
         <div className="dashboard-user">
           <span className="dashboard-username">{auth.user.name}</span>
-          <span className="dashboard-user-divider">|</span>
           <Link href="/logout" method="post" as="button" className="dashboard-logout">
             Log out
           </Link>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <main className="dashboard-hero-container">
-        <div className="dashboard-hero-content">
-          <h1 className="dashboard-hero-title">Process your Ledger Spreadsheet</h1>
-          <p className="dashboard-hero-subtitle">
-            Upload your Excel file to instantly edit values, run automatic calculations, and preview live summaries.
-          </p>
+      <main className="dashboard-main">
+        <div className="dashboard-import-panel">
+          <h1>Process your Ledger Spreadsheet</h1>
+          <p>Upload your Excel file to instantly edit values, run automatic calculations, and preview live summaries.</p>
 
-          {/* Dropzone Wrapper */}
-          <div className="dashboard-dropzone">
-            {/* File input */}
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleFileChange} 
-              accept=".xlsx, .xls, .csv" 
-              className="hidden-file-input"
-            />
+          {status && <p className="dashboard-import-status">{status}</p>}
+          {errors?.file && <p className="dashboard-import-error">{errors.file}</p>}
 
-            {/* Action Button */}
-            <button 
-              type="button" 
-              onClick={triggerFileSelect} 
-              className="dashboard-import-button-large"
+          <div className="dashboard-import-dropzone">
+            <button
+              type="button"
+              className="dashboard-import-button"
+              disabled={processing}
+              onClick={() => fileInputRef.current?.click()}
             >
-              Select Excel file
+              {processing ? "Processing…" : "Select Excel file"}
             </button>
-
-            <span className="dashboard-dropzone-text">or drop spreadsheet here</span>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={handleFileChange}
+              style={{ display: "none" }}
+            />
+            <p className="dashboard-import-hint">or drop spreadsheet here</p>
           </div>
         </div>
       </main>
-
-      {/* Footer */}
-      <footer className="dashboard-footer">
-        <p>© 2026 Talaan Ledger Manager. Built for clean accounting.</p>
-      </footer>
     </div>
   );
-}
+} 
