@@ -14,7 +14,7 @@ class ImportLedger extends Command
      *
      * @var string
      */
-    protected $signature = 'ledger:import {file : The absolute path to the Excel file to import} {--user=1 : ID of the user performing the import}';
+    protected $signature = 'ledger:import {file : The absolute path to the Excel file to import} {--user=1 : ID of the user performing the import} {--year= : Fiscal year of the ledger (defaults to the current year)}';
 
     /**
      * The console command description.
@@ -54,8 +54,9 @@ class ImportLedger extends Command
 
         $this->info("Parsing file (this might take a few minutes for large files)...");
         try {
-            $import = $importService->import($fullPath, $user->id);
-            $this->info("Import complete: {$import->notes}");
+            $year = (int) ($this->option('year') ?? date('Y'));
+            $import = $importService->import($fullPath, $year, basename($filePath), $user->id);
+            $this->info("Import complete: {$import->row_count} rows imported (Upload #{$import->id}).");
             return 0;
         } catch (\Exception $e) {
             $this->error("Import failed: " . $e->getMessage());

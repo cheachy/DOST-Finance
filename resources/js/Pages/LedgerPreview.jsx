@@ -31,11 +31,11 @@ export default function LedgerPreview({ importId, transactions = [] }) {
             <table className="ledger-table">
               <thead>
                 <tr>
-                  <th>ID</th>
                   <th>Date</th>
                   <th>Payee</th>
                   <th>Particulars</th>
-                  <th>OBR / DV</th>
+                  <th>OBR</th>
+                  <th>DV</th>
                   <th className="col-num">Gross</th>
                   <th className="col-num">Deductions</th>
                   <th className="col-num">Net</th>
@@ -43,19 +43,20 @@ export default function LedgerPreview({ importId, transactions = [] }) {
               </thead>
               <tbody>
                 {transactions.map((t) => (
-                  <tr>
-                    <td className="col-num">{t.id}</td>
-                    <td className="col-date">{t.date || "-"}</td>
-                    <td>{t.payee?.name || "-"}</td>
-                    <td className="col-particulars">{t.particulars || "-"}</td>
+                  <tr key={t.id}>
+                    <td className="col-date">{t.payment_date}</td>
+                    <td>{t.payee || "-"}</td>
+                    <td className="col-particulars">{t.particulars}</td>
                     <td>
-                      {t.obr_sequence || "-"} / {t.dv_sequence || "-"}
+                      {[t.obr_prefix, t.obr_no]}
+                      {[t.dv_prefix, t.dv_no]}
+                      {!t}
                     </td>
-                    <td className="col-amount">{formatCurrency(t.gross)}</td>
+                    <td className="col-amount">{formatCurrency(t.gross_amount)}</td>
                     <td className="col-amount amount-negative">
                       {t.charging_breakdown ? formatCurrency(t.charging_breakdown) : "-"}
                     </td>
-                    <td className="col-amount amount-positive">{formatCurrency(t.net)}</td>
+                    <td className="col-amount amount-positive">{formatCurrency(t.net_amount)}</td>
                   </tr>
                 ))}
               </tbody>

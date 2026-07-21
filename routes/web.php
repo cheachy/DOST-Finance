@@ -4,7 +4,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ImportController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use App\Models\Transaction;
+use App\Models\GeneralLedger;
+use App\Models\Upload;
 
 Route::get('/', function () {
     return redirect('/login');
@@ -28,17 +29,15 @@ Route::post('/imports', [ImportController::class, 'store'])
     ->middleware('auth')
     ->name('imports.store');
 
-Route::get('/imports/{import}/preview', function (App\Models\excelImport $import) {
-    $transactions = Transaction::with(['payee', 'account', 'tax'])
-        ->where('import_id', $import->id)
-        ->orderBy('date')
-        ->orderBy('dv_month')
-        ->orderBy('dv_sequence')
-        ->orderBy('id')
+Route::get('/imports/{import}/preview', function (Upload $import) {
+    $transactions = GeneralLedger::where('upload_id', $import->id)
+        ->orderBy('ledger_month')
+        ->orderBy('source_row')
         ->get();
-        
+
     return Inertia::render('LedgerPreview', [
         'importId' => $import->id,
-        'transactions' => $transactions
+        'transactions' => $transactions,
     ]);
 })->middleware('auth')->name('imports.preview');
+

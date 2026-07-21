@@ -12,6 +12,7 @@ class ImportController extends Controller
     {
         $request->validate([
             'file' => ['required', 'file', 'mimes:xlsx,xls'],
+            'year' => ['required', 'integer'],
         ]);
 
         // Store the uploaded file permanently — this becomes the base
@@ -25,7 +26,12 @@ class ImportController extends Controller
         $fullPath = Storage::disk('local')->path($path);
 
         try {
-            $import = $importService->import($fullPath, $request->user()->id);
+            $import = $importService->import(
+                $fullPath,
+                (int) $request->input('year'),
+                $originalName,
+                $request->user()->id
+            );
         } catch (\RuntimeException $e) {
             // A sheet couldn't be safely parsed (missing required
             // columns) — surface this clearly rather than a generic 500.
