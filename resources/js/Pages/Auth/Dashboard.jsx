@@ -13,7 +13,7 @@ export default function Dashboard() {
     setProcessing(true);
     router.post(
       "/imports",
-      { file },
+      { file, year: new Date().getFullYear() },
       {
         forceFormData: true,
         onFinish: () => {
@@ -45,7 +45,9 @@ export default function Dashboard() {
           <p>Upload your Excel file to instantly edit values, run automatic calculations, and preview live summaries.</p>
 
           {status && <p className="dashboard-import-status">{status}</p>}
-          {errors?.file && <p className="dashboard-import-error">{errors.file}</p>}
+          {(errors?.file || errors?.year) && (
+            <p className="dashboard-import-error">{errors.file || errors.year}</p>
+          )}
 
           <div className="dashboard-import-dropzone">
             <button

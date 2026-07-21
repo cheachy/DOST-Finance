@@ -28,24 +28,4 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
-
-    public function transactions() {
-        return $this->hasMany(Transaction::class);
-    }
- 
-    public function excelImports() {
-        return $this->hasMany(ExcelImport::class, 'uploaded_by');
-    }
- 
-    public function reportExports() {
-        return $this->hasMany(ReportExport::class, 'generated_by');
-    }
- 
-    public function auditLogs() {
-        return $this->hasMany(AuditLog::class);
-    }
- 
-    public function fundReceipts() {
-        return $this->hasMany(FundReceipt::class);
-    }
 }

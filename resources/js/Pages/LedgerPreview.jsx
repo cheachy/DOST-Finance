@@ -31,11 +31,10 @@ export default function LedgerPreview({ importId, transactions = [] }) {
             <table className="ledger-table">
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>Payee</th>
-                  <th>Particulars</th>
                   <th>OBR</th>
                   <th>DV</th>
+                  <th>Payee</th>
+                  <th>Particulars</th>
                   <th className="col-num">Gross</th>
                   <th className="col-num">Deductions</th>
                   <th className="col-num">Net</th>
@@ -44,19 +43,18 @@ export default function LedgerPreview({ importId, transactions = [] }) {
               <tbody>
                 {transactions.map((t) => (
                   <tr key={t.id}>
-                    <td className="col-date">{t.payment_date}</td>
-                    <td>{t.payee || "-"}</td>
+                    <td>{[t.obr_prefix, t.obr_no].filter(Boolean).join(" / ")}</td>
+                    <td>{[t.dv_prefix, t.dv_no].filter(Boolean).join(" / ")}</td> 
+                    <td>{t.payee}</td>
                     <td className="col-particulars">{t.particulars}</td>
-                    <td>
-                      {[t.obr_prefix, t.obr_no]}
-                      {[t.dv_prefix, t.dv_no]}
-                      {!t}
-                    </td>
-                    <td className="col-amount">{formatCurrency(t.gross_amount)}</td>
+                    <td className="col-amount">
+                      {t.gross_amount ? formatCurrency(t.gross_amount): ""}</td>
                     <td className="col-amount amount-negative">
-                      {t.charging_breakdown ? formatCurrency(t.charging_breakdown) : "-"}
+                      {t.charging_breakdown ? formatCurrency(t.charging_breakdown): ""}
                     </td>
-                    <td className="col-amount amount-positive">{formatCurrency(t.net_amount)}</td>
+                    <td className="col-amount amount-positive">
+                      {t.net_amount ? formatCurrency(t.net_amount): ""}</td>
+                    <td className="col-date">{t.payment_date}</td>
                   </tr>
                 ))}
               </tbody>
