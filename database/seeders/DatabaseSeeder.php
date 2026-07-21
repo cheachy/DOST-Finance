@@ -18,8 +18,8 @@ class DatabaseSeeder extends Seeder
         // User::factory(10)->create();
 
         User::factory()->create([
-            'name' => 'Admin Staff',
-            'email' => 'dost@gov.ph',
+            'name' => 'Accountant',
+            'email' => 'caitlynkiramman@dost.gov.ph',
             'password' => bcrypt('password'),
         ]);
     }

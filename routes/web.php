@@ -12,11 +12,11 @@ Route::get('/', function () {
 });
 
 Route::get('/login', function () {
-    return Inertia::render('Auth/Login');
+    return Inertia::render('auth/Login');
 })->name('login');
 
 Route::get('/dashboard', function () {
-    return Inertia::render('Auth/Dashboard');
+    return Inertia::render('auth/Dashboard');
 })->middleware('auth')->name('dashboard');
 
 Route::post('/login', [AuthController::class, 'store']);

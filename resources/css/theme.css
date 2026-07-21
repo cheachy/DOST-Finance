@@ -1,20 +1,20 @@
 :root {
-  --ink: #1b2a4a;
-  --ink-hover: #263a63;
-  --paper: #f2efe4;
-  --card: #fbf9f2;
-  --border: #ded7c2;
-  --rule: #b7c9b0;
-  --gold: #a9812e;
-  --margin-red: #8c2f26;
-  --text-secondary: #5b5b52;
-  --text-muted: #8a8370;
-  --hover-bg: #efe9d8;
-  --border-bottom: #eee;
-  --background: #ffffff;
-  --error: #8c0c00;
+  --dost-blue: #0038a8;      /* official DOST royal blue */
+  --dost-blue-ink: #002a80;
+  --dost-cyan: #00c2ff;
+  --dost-hover: #000000;     /* button hover collapses to black */
 
-  --font-serif: "Source Serif 4", serif;
-  --font-sans: "IBM Plex Sans", sans-serif;
-  --font-mono: "IBM Plex Mono", monospace;
+  --aslr-ink: #0b1220;
+  --aslr-text: #111827;
+  --aslr-muted: #6b7280;
+  --aslr-faint: #9ca3af;
+  --aslr-border: #e5e7eb;
+  --aslr-surface: #ffffff;
+
+  --aslr-danger-bg: #fef2f2;
+  --aslr-danger-bd: #fee2e2;
+  --aslr-danger-fg: #dc2626;
+
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
 }

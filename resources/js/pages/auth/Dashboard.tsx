@@ -1,13 +1,13 @@
 import { Head, Link, usePage, router } from "@inertiajs/react";
-import { useRef, useState } from "react";
+import { useRef, useState, ChangeEvent } from "react";
 
 export default function Dashboard() {
   const { auth, status, errors } = usePage().props;
-  const fileInputRef = useRef(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [processing, setProcessing] = useState(false);
 
-  function handleFileChange(e) {
-    const file = e.target.files[0];
+  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
     if (!file) return;
 
     setProcessing(true);
@@ -23,6 +23,8 @@ export default function Dashboard() {
       }
     );
   }
+
+  if (!auth.user) return null;
 
   return (
     <div className="dashboard-page">
@@ -71,4 +73,4 @@ export default function Dashboard() {
       </main>
     </div>
   );
-} 
+}

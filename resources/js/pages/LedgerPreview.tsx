@@ -1,8 +1,13 @@
 import { Head, Link } from "@inertiajs/react";
-import React from "react";
+import type { Transaction } from "../types";
 
-export default function LedgerPreview({ importId, transactions = [] }) {
-  const formatCurrency = (val) => {
+interface LedgerPreviewProps {
+  importId: number;
+  transactions?: Transaction[];
+}
+
+export default function LedgerPreview({ importId, transactions = [] }: LedgerPreviewProps) {
+  const formatCurrency = (val: string | number | null | undefined) => {
     if (val === null || val === undefined) return "-";
     const num = Number(val);
     if (isNaN(num)) return "-";
@@ -44,7 +49,7 @@ export default function LedgerPreview({ importId, transactions = [] }) {
                 {transactions.map((t) => (
                   <tr key={t.id}>
                     <td>{[t.obr_prefix, t.obr_no].filter(Boolean).join(" / ")}</td>
-                    <td>{[t.dv_prefix, t.dv_no].filter(Boolean).join(" / ")}</td> 
+                    <td>{[t.dv_prefix, t.dv_no].filter(Boolean).join(" / ")}</td>
                     <td>{t.payee}</td>
                     <td className="col-particulars">{t.particulars}</td>
                     <td className="col-amount">
