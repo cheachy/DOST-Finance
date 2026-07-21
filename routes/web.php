@@ -4,7 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ImportController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use Illuminate\Http\Request;
+use App\Models\Transaction;
 
 Route::get('/', function () {
     return redirect('/login');
@@ -28,27 +28,17 @@ Route::post('/imports', [ImportController::class, 'store'])
     ->middleware('auth')
     ->name('imports.store');
 
-Route::get('/test-upload', function () {
-    return response('
-        <form method="POST" action="/test-upload" enctype="multipart/form-data">
-            <input type="hidden" name="_token" value="' . csrf_token() . '">
-            <input type="file" name="file">
-            <button type="submit">Upload</button>
-        </form>
-    ');
-});
- 
-Route::post('/test-upload', function (Request $request) {
-    if (!$request->hasFile('file')) {
-        return response('No file received at all.');
-    }
- 
-    $file = $request->file('file');
- 
-    return response(sprintf(
-        'Received file: %s, size: %d bytes, valid: %s',
-        $file->getClientOriginalName(),
-        $file->getSize(),
-        $file->isValid() ? 'yes' : 'no'
-    ));
-});
+Route::get('/imports/{import}/preview', function (App\Models\excelImport $import) {
+    $transactions = Transaction::with(['payee', 'account', 'tax'])
+        ->where('import_id', $import->id)
+        ->orderBy('date')
+        ->orderBy('dv_month')
+        ->orderBy('dv_sequence')
+        ->orderBy('id')
+        ->get();
+        
+    return Inertia::render('LedgerPreview', [
+        'importId' => $import->id,
+        'transactions' => $transactions
+    ]);
+})->middleware('auth')->name('imports.preview');

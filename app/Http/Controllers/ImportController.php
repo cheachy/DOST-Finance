@@ -19,10 +19,9 @@ class ImportController extends Controller
         // discard the original after parsing it.
         // Explicitly the 'local' disk, not whatever FILESYSTEM_DISK
         // happens to default to — this feature needs a real local file
-        // path (the parser opens it directly, and export later reopens
-        // the same original file to surgically edit it). A misconfigured
-        // default disk here previously caused silent upload hangs.
-        $path = $request->file('file')->store('ledger-imports', 'local');
+        $originalName = $request->file('file')->getClientOriginalName();
+        $filename = date('Ymd_His') . '_' . $originalName;
+        $path = $request->file('file')->storeAs('ledger-imports', $filename, 'local');
         $fullPath = Storage::disk('local')->path($path);
 
         try {
@@ -33,6 +32,6 @@ class ImportController extends Controller
             return back()->withErrors(['file' => $e->getMessage()]);
         }
 
-        return back()->with('status', "Import complete: {$import->notes}");
+        return redirect()->route('imports.preview', $import->id);
     }
 }

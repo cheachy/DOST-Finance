@@ -27,7 +27,7 @@ class Transaction extends Model
         'paid_aps_curr' => 'decimal:2',
     ];
 
-    # No balance attribute because calance is a running total across many rows in date order, computed via
+    # No balance attribute because balance is a running total across many rows in date order, computed via
     # a query/service (e.g. a LedgerService). Summaries are all computed at read.
 
     public function account(){
@@ -47,7 +47,7 @@ class Transaction extends Model
     }
     public function tax()
     {
-        return $this->hasOne(TransactionTax::class, 'transaction_id');
+        return $this->hasOne(TransactionTaxLine::class, 'transaction_id');
     }
     public function auditLogs(){
         return $this->hasMany(auditLog::class);

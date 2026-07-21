@@ -1,18 +1,14 @@
 <?php
 
 // Column mapping confirmed against the real sample-master-ledger.xlsx
-// (PS / MOOE / GIA sheets share this exact layout — row 8 + row 9 are
-// a combined two-row header). If a future SL tab genuinely differs,
+// If a future SL tab genuinely differs,
 // its own sheet_templates.column_map should be built from scratch by
 // the header-detection routine rather than forced into this shape.
 
 return [
 
-    // Sheets that are genuinely NOT subsidiary ledgers at all — these
-    // are permanently out of scope, never parsed, never exported.
-    // This is a small, deliberate list — don't add a sheet here just
-    // because it's not being actively imported yet; see
-    // 'active_scope_sheets' below for that instead.
+    // Sheets that are genuinely NOT subsidiary ledgers at all 
+
     'non_ledger_sheets' => [
         'Prior Year Retention', // no Charging/RC structure — accountant handles this one manually
         'Ref',                   // reference material, not a ledger
@@ -27,9 +23,7 @@ return [
     // any other code change, as long as their layout is close enough
     // to PS/MOOE/GIA's confirmed structure.
     'active_scope_sheets' => [
-        'PS',
-        'MOOE',
-        'GIA',
+        'MDS 101',
     ],
 
     // Real SLs, not yet in active scope — listed here (rather than
@@ -49,10 +43,9 @@ return [
         'SARAI CO CNTG  pd APs',
     ],
 
-    // MDS 101 is the General Ledger — a fundamentally different shape
-    // (fund_receipts + transactions combined). Not parsed by this SL
-    // importer at all; needs its own dedicated import path later.
-    'general_ledger_sheet' => 'MDS 101',
+    // MDS 101 is the Master Ledger. It has the similar shape as the SLs
+    // but is the definitive source of truth.
+    'general_ledger_sheet' => null,
 
     // Cell holding the fiscal year for the whole file, e.g. "CY 2026"
     'fiscal_year_cell' => 'A3',

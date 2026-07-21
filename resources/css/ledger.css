@@ -1,0 +1,190 @@
+.ledger-container {
+  margin-top: 2rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+}
+
+.ledger-header {
+  padding: 1rem 1.5rem;
+  background: var(--surface-hover);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ledger-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.ledger-count {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.ledger-table-wrapper {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 600px;
+}
+
+.ledger-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.ledger-table th {
+  background: var(--surface-hover);
+  color: var(--text-secondary);
+  font-weight: 600;
+  padding: 0.75rem 1rem;
+  border-bottom: 2px solid var(--border);
+  border-right: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.75rem;
+}
+
+.ledger-table th:last-child {
+  border-right: none;
+}
+
+.ledger-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+.ledger-table td:last-child {
+  border-right: none;
+}
+
+.ledger-table tr:hover td {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* Number columns formatting */
+.col-num {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  text-align: right;
+  color: var(--text-secondary) !important;
+}
+
+/* Specific styling for financial amounts */
+.col-amount {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  text-align: right;
+  font-weight: 500;
+}
+
+.amount-positive {
+  color: #10b981 !important; /* Tailwind emerald-500 */
+}
+
+.amount-negative {
+  color: #ef4444 !important; /* Tailwind red-500 */
+}
+
+.col-date {
+  color: var(--text-secondary) !important;
+}
+
+.col-particulars {
+  white-space: normal;
+  min-width: 250px;
+  max-width: 400px;
+  line-height: 1.4;
+}
+
+/* Empty state */
+.ledger-empty {
+  padding: 3rem;
+  text-align: center;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Full-Screen Layout Styles */
+.ledger-fullscreen {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  background: var(--background);
+  overflow: hidden;
+}
+
+.ledger-fullscreen-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.ledger-fullscreen-header .header-left {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.ledger-fullscreen-header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.back-btn {
+  padding: 0.5rem 1rem;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.back-btn:hover {
+  background: var(--border);
+}
+
+.record-count {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.ledger-fullscreen-main {
+  flex-grow: 1;
+  overflow: hidden; /* Let the wrapper handle scrolling */
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+}
+
+.ledger-table-wrapper-full {
+  flex-grow: 1;
+  overflow-x: auto;
+  overflow-y: auto;
+  height: 100%;
+}

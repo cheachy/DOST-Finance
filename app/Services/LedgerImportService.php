@@ -202,7 +202,9 @@ class LedgerImportService
             $chargingValue = trim((string) $this->cellByField($sheet, $map, 'charging_value', $row));
             $paymentModeRaw = trim((string) $this->cellByField($sheet, $map, 'payment_mode', $row));
 
-            if ($particulars === '' && $chargingValue === '' && $paymentModeRaw === '') {
+            $dvSequenceRaw = trim((string) $this->cellByField($sheet, $map, 'dv_number', $row, 1));
+
+            if ($particulars === '' && $chargingValue === '' && $paymentModeRaw === '' && $dvSequenceRaw === '') {
                 $consecutiveBlankRows++;
                 if ($consecutiveBlankRows >= $maxConsecutiveBlankRows) {
                     Log::info(sprintf(
@@ -215,9 +217,35 @@ class LedgerImportService
             }
             $consecutiveBlankRows = 0;
 
-            if ($paymentModeRaw === '') {
-                $this->rowsSkippedNta++; // NTA / release-of-funds notation row
-                continue;
+            // --- Forward-fill OBR#/DV# (shared-voucher rows) ---
+            $obrMonthRaw = trim((string) $this->cellByField($sheet, $map, 'obr_number', $row, 0));
+            $obrSequenceRaw = trim((string) $this->cellByField($sheet, $map, 'obr_number', $row, 1));
+            $dvMonthRaw = trim((string) $this->cellByField($sheet, $map, 'dv_number', $row, 0));
+            $dvSequenceRaw = trim((string) $this->cellByField($sheet, $map, 'dv_number', $row, 1));
+
+            $isNewVoucher = ($dvMonthRaw !== '' || $dvSequenceRaw !== '');
+            $hasExplicitObr = ($obrMonthRaw !== '' || $obrSequenceRaw !== '');
+
+            if ($isNewVoucher) {
+                // This is a new transaction/voucher line.
+                // It gets its own DV.
+                $carryDvMonth = $dvMonthRaw !== '' ? $dvMonthRaw : null;
+                $carryDvSequence = $dvSequenceRaw !== '' ? $dvSequenceRaw : null;
+
+                // It also dictates its own OBR. If OBR is explicitly present, update the carry.
+                // If it's blank (e.g. remittance row), clear the carry so it doesn't inherit the previous row's OBR.
+                if ($hasExplicitObr) {
+                    $carryObrMonth = $obrMonthRaw !== '' ? $obrMonthRaw : null;
+                    $carryObrSequence = $obrSequenceRaw !== '' ? $obrSequenceRaw : null;
+                } else {
+                    $carryObrMonth = null;
+                    $carryObrSequence = null;
+                }
+            } else {
+                // This is NOT a new voucher (DV is blank).
+                // It is a continuation row for the same voucher (e.g. multiple payees/breakdowns for one DV).
+                // It implicitly inherits both the DV and OBR from the previous row.
+                // (No changes to carry variables needed)
             }
 
             if ($chargingValue !== '' && $this->isExcludedChargingValue($chargingValue)) {
@@ -230,25 +258,13 @@ class LedgerImportService
                 continue;
             }
 
-            // --- Forward-fill OBR#/DV# (shared-voucher rows) ---
-            $obrMonthRaw = trim((string) $this->cellByField($sheet, $map, 'obr_number', $row, 0));
-            $obrSequenceRaw = trim((string) $this->cellByField($sheet, $map, 'obr_number', $row, 1));
-            $dvMonthRaw = trim((string) $this->cellByField($sheet, $map, 'dv_number', $row, 0));
-            $dvSequenceRaw = trim((string) $this->cellByField($sheet, $map, 'dv_number', $row, 1));
-
-            if ($obrMonthRaw !== '') {
-                $carryObrMonth = $obrMonthRaw;
-                $carryObrSequence = $obrSequenceRaw;
-            }
-            if ($dvMonthRaw !== '') {
-                $carryDvMonth = $dvMonthRaw;
-                $carryDvSequence = $dvSequenceRaw;
-            }
-
             $payeeName = trim((string) $this->cellByField($sheet, $map, 'payee', $row));
             if ($payeeName === '') {
                 continue; // no payee on a real row is unexpected — skip, don't guess
             }
+
+            $gross = $this->numericByField($sheet, $map, 'gross', $row);
+
             $payee = $this->resolvePayee($payeeName);
 
             $account = $this->resolveAccount($chargingValue);
@@ -257,9 +273,6 @@ class LedgerImportService
             $wCode = $this->resolveStatusCode($wRaw);
 
             $paymentMode = $this->config['payment_mode_map'][$paymentModeRaw] ?? null;
-            if ($paymentMode === null) {
-                continue; // unrecognized A/C value — don't guess, skip
-            }
 
             $date = $this->parseExcelDate($this->cellByField($sheet, $map, 'date', $row));
 
@@ -277,8 +290,8 @@ class LedgerImportService
 
             DB::transaction(function () use (
                 $sheet, $map, $row, $import, $userId, $account, $payee, $wCode,
-                $paymentMode, $date, $particulars, $fiscalYear,
-                $carryObrMonth, $carryObrSequence, $carryDvMonth, $carryDvSequence
+                $paymentMode, $date, $particulars, $fiscalYear, $gross,
+                $carryObrMonth, $carryObrSequence, $carryDvMonth, $carryDvSequence,
             ) {
                 $transaction = Transaction::create([
                     'account_id' => $account->id,
@@ -300,7 +313,7 @@ class LedgerImportService
                     'deduction_type' => null, // RLIP/etc. detection not yet implemented
                     'receipts' => $this->numericByField($sheet, $map, 'receipts', $row),
                     'charging_breakdown' => $this->numericByField($sheet, $map, 'charging_breakdown', $row),
-                    'gross' => $this->numericByField($sheet, $map, 'gross', $row),
+                    'gross' => $gross,
                     'net' => $this->numericByField($sheet, $map, 'net', $row),
                     'payment_net_wtx' => $this->numericByField($sheet, $map, 'payment_net_wtx', $row),
                     'paid_nydd_prior' => $this->numericByField($sheet, $map, 'paid_nydd_prior', $row),
@@ -419,7 +432,16 @@ class LedgerImportService
                                 'col2' => Coordinate::stringFromColumnIndex($col + 1),
                             ];
                         } else {
-                            $map[$field] = ['col' => $letter];
+                            // HARDCODE fallback: OBR and DV are always 2-part numbers (Month + Sequence)
+                            // Even if the accountant forgets to merge the header cells, we must read both columns.
+                            if (in_array($field, ['obr_number', 'dv_number'])) {
+                                $map[$field] = [
+                                    'col' => $letter,
+                                    'col2' => Coordinate::stringFromColumnIndex($col + 1),
+                                ];
+                            } else {
+                                $map[$field] = ['col' => $letter];
+                            }
                         }
                         $matchedThisColumn = true;
                     }
@@ -592,7 +614,7 @@ class LedgerImportService
 
     private function assertRequiredFieldsPresent(array $map, string $sheetName): void
     {
-        $required = ['payee', 'charging_value', 'gross', 'date', 'payment_mode'];
+        $required = ['payee', 'charging_value', 'gross', 'date'];
         $missing = array_filter($required, fn ($field) => !isset($map[$field]));
 
         if (!empty($missing)) {
