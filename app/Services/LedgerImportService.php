@@ -11,15 +11,22 @@ use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
- * Dynamic importer for the MDS 101 general ledger.
+ * Dynamic importer for the General ledger.
  *
  * Nothing about rows or columns is hardcoded:
- *   1. detectHeaderRow() finds the header band by its anchor labels.
- *   2. buildColumnMap() maps each column to a canonical field via config('ledger').
- *   3. parseRows() segments months by divider rows and classifies every row.
+ *   1. detectHeaderRow()  finds the header band by its anchor labels.
+ *   2. buildColumnMap()   maps columns to canonical fields via config('ledger'),
+ *                         and discovers the deduction/tax block by boundary
+ *                         anchors so a tax-law change needs no code change.
+ *   3. parseRows()        segments months by divider rows and classifies each row.
  *
- * Run this from a queued job - reading cached formula values across a large
- * workbook is CPU-bound.
+ * IMPORT IS A SNAPSHOT, NOT AN APPEND. The accountant keeps one workbook and
+ * re-imports it as months are appended. Each import stores a complete snapshot
+ * under a new upload and marks it current, so re-importing the same growing
+ * file cannot duplicate earlier months, and a payment mode that was blank
+ * before simply appears filled in the new snapshot.
+ *
+ * Run from a queued job: reading cached formula values is CPU-bound.
  */
 class LedgerImportService
 {
@@ -38,6 +45,7 @@ class LedgerImportService
             'sheet_name'    => $this->cfg['sheet'],
             'fiscal_year'   => $year,
             'status'        => 'parsing',
+            'is_current'    => false,
             'uploaded_by'   => $uploadedBy,
         ]);
 
@@ -47,30 +55,67 @@ class LedgerImportService
             $map     = $this->buildColumnMap($sheet, $mainRow);
             $records = $this->parseRows($sheet, $mainRow, $map, $year);
 
-            DB::transaction(function () use ($records, $upload) {
+            $transactions = 0;
+            foreach ($records as $rec) {
+                if ($rec['row_type'] === 'transaction') {
+                    $transactions++;
+                }
+            }
+
+            DB::transaction(function () use ($records, $upload, $map, $transactions) {
                 foreach (array_chunk($records, 500) as $chunk) {
                     GeneralLedger::insert(array_map(
                         fn ($rec) => $this->toRow($rec, $upload->id),
                         $chunk
                     ));
                 }
+
+                // this snapshot becomes the live ledger
+                Upload::where('fiscal_year', $upload->fiscal_year)
+                    ->where('id', '!=', $upload->id)
+                    ->update(['is_current' => false]);
+
+                $upload->update([
+                    'status'            => 'done',
+                    'is_current'        => true,
+                    'row_count'         => count($records),
+                    'transaction_count' => $transactions,
+                    'header_map'        => $this->describeMap($map),
+                ]);
             });
 
-            $upload->update(['status' => 'done', 'row_count' => count($records)]);
+            $this->pruneOldSnapshots($upload);
         } catch (\Throwable $e) {
-            $upload->update(['status' => 'failed']);
+            $upload->update(['status' => 'failed', 'failure_reason' => $e->getMessage()]);
             throw $e;
         }
 
-        return $upload;
+        return $upload->fresh();
     }
 
-    // ---------------------------------------------------------------- loading
+    /** Drop the oldest snapshots, keeping the newest N for audit. */
+    protected function pruneOldSnapshots(Upload $current): void
+    {
+        $keep = (int) ($this->cfg['keep_snapshots'] ?? 0);
+        if ($keep <= 0) {
+            return;
+        }
+
+        Upload::where('fiscal_year', $current->fiscal_year)
+            ->where('status', 'done')
+            ->orderByDesc('id')
+            ->skip($keep)
+            ->take(PHP_INT_MAX)
+            ->get()
+            ->each
+            ->delete();   // cascades to general_ledgers
+    }
+
+    // loading
 
     protected function loadSheet(string $path): Worksheet
     {
         $reader = IOFactory::createReaderForFile($path);
-        // keep formulas so we can read their cached results; skip styles for speed
         $reader->setReadEmptyCells(false);
         $spreadsheet = $reader->load($path);
 
@@ -78,7 +123,7 @@ class LedgerImportService
             ?? $spreadsheet->getActiveSheet();
     }
 
-    /** Read a cell's cached value (formula result if it is a formula). */
+    /** Cached value of a cell (formula result if it is a formula). */
     protected function cellVal(Worksheet $sheet, int $row, int $col)
     {
         $coord = Coordinate::stringFromColumnIndex($col) . $row;
@@ -94,7 +139,7 @@ class LedgerImportService
         return $v === '' ? null : $v;
     }
 
-    // ------------------------------------------------------------ header band
+    // header band
 
     protected function norm($v): string
     {
@@ -121,7 +166,10 @@ class LedgerImportService
             }
             $hit = true;
             foreach ($anchors as $a) {
-                if (! isset($labels[$a])) { $hit = false; break; }
+                if (! isset($labels[$a])) {
+                    $hit = false;
+                    break;
+                }
             }
             if ($hit) {
                 return $r;
@@ -131,7 +179,7 @@ class LedgerImportService
         throw new \RuntimeException('Ledger header row not found');
     }
 
-    /** coordinate -> top-left cached value, for merged header cells. */
+    /** coordinate -> top-left value, so merged header cells resolve. */
     protected function mergeLookup(Worksheet $sheet): array
     {
         $look = [];
@@ -159,7 +207,11 @@ class LedgerImportService
         return $merges[$coord] ?? null;
     }
 
-    /** canonical field -> 1-based column index, purely from header labels. */
+    /**
+     * canonical field -> 1-based column index, purely from header labels.
+     * The '__tax__' key holds the dynamically discovered deduction block
+     * as a list of [label, columnIndex].
+     */
     protected function buildColumnMap(Worksheet $sheet, int $mainRow): array
     {
         $merges = $this->mergeLookup($sheet);
@@ -195,7 +247,63 @@ class LedgerImportService
             }
         }
 
+        $map['__tax__'] = $this->discoverTaxBlock($sheet, $mainRow, $merges, $map, $cols);
+
         return $map;
+    }
+
+    /**
+     * Discover the deduction/tax block by boundary anchors.
+     *
+     * Everything between the column after 'start_after' and the column whose
+     * main label starts an 'end_labels' entry is a deduction input. Labels come
+     * from the sheet itself, so adding, renaming, or removing a tax column
+     * between fiscal years requires no code change and no migration.
+     */
+    protected function discoverTaxBlock(Worksheet $sheet, int $mainRow, array $merges, array $map, int $cols): array
+    {
+        $tb = $this->cfg['tax_block'];
+        $anchor = $map[$tb['start_after']] ?? null;
+        if (! $anchor) {
+            return [];
+        }
+
+        $start = $anchor + 1;
+        $end   = null;
+        for ($c = $start; $c <= $cols; $c++) {
+            $main = $this->norm($this->bandValue($sheet, $mainRow, $c, $merges));
+            foreach ($tb['end_labels'] as $lbl) {
+                if ($main !== '' && str_starts_with($main, $lbl)) {
+                    $end = $c;
+                    break 2;
+                }
+            }
+        }
+        if (! $end) {
+            return [];
+        }
+
+        $block = [];
+        for ($c = $start; $c < $end; $c++) {
+            $main = $this->norm($this->bandValue($sheet, $mainRow, $c, $merges));
+            $sub  = $this->norm($this->bandValue($sheet, $mainRow + 1, $c, $merges));
+
+            if (! empty($tb['join_continuation']) && str_starts_with($sub, '/') && $main !== '') {
+                $label = $main . $sub;                       // "refund of overpayment/liquidated damages"
+            } elseif ($sub !== '' && ! in_array($sub, $tb['group_labels'], true)) {
+                $label = $sub;
+            } else {
+                $label = $main;
+            }
+
+            $label = trim($label);
+            if ($label === '' || in_array($label, $tb['skip_labels'], true)) {
+                continue;
+            }
+            $block[] = [$label, $c];
+        }
+
+        return $block;
     }
 
     protected function canon(?string $sup, ?string $main, ?string $sub): ?string
@@ -216,11 +324,28 @@ class LedgerImportService
         if ($m === $h['dv_main']) {
             return 'dv';
         }
-        if (array_key_exists($b, $h['by_sub']) && in_array($m, $h['by_sub_allowed_main'], true)) {
-            return $h['by_sub'][$b];
+        // the only fixed field inside the deduction block
+        if ($b === $h['status_sub_label'] && in_array($m, $h['status_allowed_main'], true)) {
+            return 'status';
         }
 
         return null;
+    }
+
+    /** Human-readable column map, stored on the upload for audit. */
+    protected function describeMap(array $map): array
+    {
+        $out = ['fields' => [], 'tax_details' => []];
+        foreach ($map as $field => $col) {
+            if ($field === '__tax__') {
+                continue;
+            }
+            $out['fields'][$field] = Coordinate::stringFromColumnIndex($col);
+        }
+        foreach ($map['__tax__'] ?? [] as [$label, $col]) {
+            $out['tax_details'][$label] = Coordinate::stringFromColumnIndex($col);
+        }
+        return $out;
     }
 
     // --------------------------------------------------------------- parsing
@@ -250,7 +375,18 @@ class LedgerImportService
         for ($r = $mainRow + 1; $r <= $last; $r++) {
             $row = [];
             foreach ($map as $field => $col) {
+                if ($field === '__tax__') {
+                    continue;
+                }
                 $row[$field] = $this->cellVal($sheet, $r, $col);
+            }
+            // the dynamic deduction block
+            $tax = [];
+            foreach ($map['__tax__'] ?? [] as [$label, $col]) {
+                $v = $this->cellVal($sheet, $r, $col);
+                if ($v !== null && $v !== '') {
+                    $tax[$label] = $v;
+                }
             }
 
             $type = $this->classify($row);
@@ -267,7 +403,7 @@ class LedgerImportService
                 $month = $this->cfg['months'][$this->norm($this->get($row, 'payee'))] ?? $month;
             }
 
-            $records[] = $this->extract($row, $r, $year, $month, $type);
+            $records[] = $this->extract($row, $tax, $r, $year, $month, $type);
         }
 
         return $records;
@@ -277,7 +413,6 @@ class LedgerImportService
     {
         $payee    = $this->get($row, 'payee');
         $charging = $this->get($row, 'charging');
-        $up       = $this->isStr($payee) ? mb_strtoupper(trim($payee)) : '';
 
         if (isset($this->cfg['months'][$this->norm($payee)])) {
             return 'month_divider';
@@ -287,7 +422,10 @@ class LedgerImportService
         $blank = true;
         foreach ($keys as $k) {
             $v = $this->get($row, $k);
-            if ($v !== null && $v !== '' && $v !== ' ') { $blank = false; break; }
+            if ($v !== null && $v !== '' && $v !== ' ') {
+                $blank = false;
+                break;
+            }
         }
         if ($blank) {
             return 'blank';
@@ -307,23 +445,22 @@ class LedgerImportService
             ['payee', 'particulars', 'payment_mode']
         )));
 
+        // an identity = payee, particulars, a charge code, or a payment mode.
+        // column-total rows carry amounts but NO identity.
         $hasIdentity = $this->isStr($payee)
             || $this->isStr($this->get($row, 'particulars'))
             || $this->isStr($charging)
             || in_array($mode, ['A', 'C'], true);
 
-        // labelled total / pure-sum rows first
         if ($this->matchesAny($blob, $this->cfg['markers']['subtotal'])
             || $this->isNum($charging)
             || ($hasMoney && ! $hasIdentity)) {
             return 'subtotal';
         }
-        // labelled section / annotation rows
         if ($this->matchesAny($blob, $this->cfg['markers']['section'])
             && ! ($this->isStr($charging) || $hasMoney)) {
             return 'section_header';
         }
-        // a real transaction: identity + a charge code, a mode, or an amount
         if ($hasIdentity && ($this->isStr($charging) || in_array($mode, ['A', 'C'], true) || $hasMoney)) {
             return 'transaction';
         }
@@ -341,13 +478,14 @@ class LedgerImportService
         return false;
     }
 
-    protected function extract(array $row, int $sourceRow, int $year, ?int $month, string $type): array
+    protected function extract(array $row, array $tax, int $sourceRow, int $year, ?int $month, string $type): array
     {
         $rec = [
             'source_row'   => $sourceRow,
             'row_type'     => $type,
             'ledger_year'  => $year,
             'ledger_month' => $month,
+            'tax_details'  => [],
             'extras'       => [],
             'raw_row'      => [],
         ];
@@ -356,9 +494,13 @@ class LedgerImportService
             $rec[$field] = $this->get($row, $field);
         }
 
-        // convert Excel date serials / objects to Y-m-d
         foreach ($this->cfg['date_fields'] as $df) {
             $rec[$df] = $this->toDate($rec[$df] ?? null);
+        }
+
+        // deduction block, keyed by whatever the sheet calls each column
+        foreach ($tax as $label => $value) {
+            $rec['tax_details'][$label] = $value;
         }
 
         // RC sometimes holds a numeric remittance amount instead of a code
@@ -372,7 +514,7 @@ class LedgerImportService
             $rec['payment_mode'] = null;
         }
 
-        $rec['raw_row'] = $row;
+        $rec['raw_row'] = $row + ['__tax__' => $tax];
 
         return $rec;
     }
@@ -388,10 +530,10 @@ class LedgerImportService
         if ($this->isNum($v)) {
             return ExcelDate::excelToDateTimeObject($v)->format('Y-m-d');
         }
-        return (string) $v; // already a string date
+        return (string) $v;
     }
 
-    /** map a parsed record onto the general_ledgers column names. */
+    /** Map a parsed record onto general_ledgers column names. */
     protected function toRow(array $rec, int $uploadId): array
     {
         $colMap = $this->cfg['column_map'];
@@ -401,6 +543,7 @@ class LedgerImportService
             'row_type'     => $rec['row_type'],
             'ledger_year'  => $rec['ledger_year'],
             'ledger_month' => $rec['ledger_month'],
+            'tax_details'  => json_encode((object) $rec['tax_details']),
             'extras'       => json_encode((object) $rec['extras']),
             'raw_row'      => json_encode((object) $rec['raw_row']),
             'created_at'   => now(),

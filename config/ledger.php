@@ -1,15 +1,19 @@
 <?php
 
 /**
- * Talaan ledger parsing configuration.
+ * The ledger parsing configuration.
  *
- * The header dictionary lives here as DATA, not code: column positions are
- * discovered at import time by matching each column's (super, main, sub) header
- * labels against the maps below. Move a column, rename a header, or add a month
- * and the importer adapts without a code change.
+ * The header dictionary lives here as DATA. 
+ * 
+ * Column positions are discovered at import time by matching each column's header labels
  *
- * All keys are "normalized": lower-cased, trimmed, internal whitespace collapsed
- * to single spaces. LedgerImportService::norm() produces the same form.
+ * The deduction/tax block is NOT listed. It can be discovered by
+ * BOUNDARY ANCHORS and swept dynamically, because Philippine tax rules change
+ * between years and the columns in that block are not stable. Whatever columns
+ * exist between the anchors are captured into the tax_details jsonb, keyed by
+ * the label the sheet itself uses.
+ *
+ * All keys are already normalized.
  */
 return [
     'sheet'           => 'MDS 101',
@@ -25,66 +29,70 @@ return [
         'september' => 9, 'october' => 10, 'november' => 11, 'december' => 12,
     ],
 
-    // whole super-group blocks to skip entirely (POSTING = processing dates/times,
-    // batch/individual processing). Nothing under these is parsed.
+    // to skip (POSTING = processing dates/times)
     'ignore_super' => ['posting'],
 
     'header' => [
         // matched on the MAIN header label -> canonical field
         'by_main' => [
-            'obr #'                 => 'obr_prefix',
-            'payee'                 => 'payee',
-            'charging'              => 'charging',
-            'rc'                    => 'rc',
-            'particulars'           => 'particulars',
-            'refund of overpayment' => 'refund_liquidated',
-            'retention'             => 'retention',
-            'charging breakdown'    => 'charging_breakdown',
-            'gross'                 => 'gross',
-            'net'                   => 'net',
-            'receipts'              => 'receipts',
-            'acct codes'            => 'acct_code',
-            'jev #'                 => 'jev_no',
-            'remarks'               => 'remarks',
-            'date'                  => 'pay_date',      // POSTING dates are ignored above
-            'rod'                   => 'payment_mode',  // ROD A/C
+            'obr #'              => 'obr_prefix',
+            'payee'              => 'payee',
+            'charging'           => 'charging',
+            'rc'                 => 'rc',
+            'particulars'        => 'particulars',
+            'charging breakdown' => 'charging_breakdown',
+            'gross'              => 'gross',
+            'net'                => 'net',
+            'receipts'           => 'receipts',
+            'acct codes'         => 'acct_code',
+            'jev #'              => 'jev_no',
+            'remarks'            => 'remarks',
+            'date'               => 'pay_date',      // POSTING dates ignored above
+            'rod'                => 'payment_mode',  // ROD A/C (ROD Block)
         ],
 
-        // matched on the SUB header when the main cell is blank or a group label
-        'by_sub' => [
-            'w'         => 'status',
-            'comp'      => 'tax_comp',
-            'evat'      => 'tax_evat',
-            'vt'        => 'tax_vt',
-            'pt'        => 'tax_pt',
-            'final tax' => 'tax_final',
-            'local tax' => 'local_tax',
-        ],
-        // by_sub only applies when the main label is one of these
-        'by_sub_allowed_main' => ['', 'vat', 'wtx'],
+        
+        'status_sub_label'    => 'w',
+        'status_allowed_main' => ['', 'vat', 'wtx'],
 
         // split columns
         'dv_main'        => 'dv#',        // two merged cols -> dv_prefix, dv_no
-        'obr_split_from' => 'obr_prefix', // obr_no = the column immediately after OBR #
+        'obr_split_from' => 'obr_prefix', // obr_no = the column right after OBR #
     ],
 
-    // row-classification markers (matched case-insensitively against
-    // payee + particulars + payment_mode)
-    'markers' => [
-        'subtotal' => ['TOTAL', 'PS TAX', 'PS ACCTG', 'PS BUDGET', 'ACCOUNTING', 'BUDGET'],
-        'section'  => ['OBLIGATION', 'BECAME DD', 'BECOME DD', 'PRIOR MONTHS', 'NYDD', 'CANCELLED', 'REVERSION'],
+    /*
+     | Deduction / tax block (dynamic).
+     |
+     | Starts at the column immediately after 'start_after', ends at the column
+     | whose main label begins with any of 'end_labels'. Every column in between
+     | becomes a tax_details key, except 'skip_labels' (the status flag and the
+     | sheet's own computed columns).
+     |
+     | Verified against the CY2026 workbook, which yields:
+     |   comp, evat, vt, pt, final tax, local tax,
+     |   refund of overpayment/liquidated damages, retention
+     |
+     | A tax-law change that adds, renames, or removes a column here needs no
+     | code change and no migration.
+     */
+    'tax_block' => [
+        'start_after' => 'particulars',
+        'end_labels'  => ['total deductions'],
+        'skip_labels' => ['w', 'checking', 'total'],
+        // a sub label beginning with "/" continues its main label
+        'join_continuation' => true,
+        // group labels that should never become a key on their own
+        'group_labels' => ['vat', 'wtx'],
     ],
 
     // canonical fields extracted per row, in order (remarks + payment_mode last)
     'fields' => [
         'obr_prefix', 'obr_no', 'payee', 'charging', 'rc', 'particulars', 'status',
-        'tax_comp', 'tax_evat', 'tax_vt', 'tax_pt', 'tax_final',
-        'local_tax', 'refund_liquidated', 'retention', 'charging_breakdown',
-        'gross', 'net', 'pay_date', 'dv_prefix', 'dv_no', 'receipts',
-        'acct_code', 'jev_no', 'remarks', 'payment_mode',
+        'charging_breakdown', 'gross', 'net', 'pay_date', 'dv_prefix', 'dv_no',
+        'receipts', 'acct_code', 'jev_no', 'remarks', 'payment_mode',
     ],
 
-    // canonical parser field -> general_ledgers column (unlisted fields map 1:1)
+    // canonical parser field -> general_ledgers column (unlisted map 1:1)
     'column_map' => [
         'charging' => 'charging_code',
         'rc'       => 'rc_code',
@@ -93,6 +101,15 @@ return [
         'pay_date' => 'payment_date',
     ],
 
-    // fields that hold Excel date serials and must be converted to Y-m-d
+    // fields holding Excel date serials, converted to Y-m-d
     'date_fields' => ['pay_date'],
+
+    // row-classification markers (matched against payee + particulars + rod)
+    'markers' => [
+        'subtotal' => ['TOTAL', 'PS TAX', 'PS ACCTG', 'PS BUDGET', 'ACCOUNTING', 'BUDGET'],
+        'section'  => ['OBLIGATION', 'BECAME DD', 'BECOME DD', 'PRIOR MONTHS', 'NYDD', 'CANCELLED', 'REVERSION'],
+    ],
+
+    // snapshot retention: keep this many past snapshots for audit, 0 = keep all
+    'keep_snapshots' => 5,
 ];
