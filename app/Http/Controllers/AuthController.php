@@ -14,7 +14,7 @@ class AuthController extends Controller
      */
     public function create(Request $request)
     {
-        return Inertia::render('Auth/Login', [
+        return Inertia::render('auth/Login', [
             'status' => $request->session()->get('status'),
         ]);
     }
@@ -53,6 +53,6 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        return redirect('/login');
     }
 }
