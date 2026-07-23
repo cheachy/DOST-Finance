@@ -49,6 +49,11 @@ return new class extends Migration
 
             $t->integer('row_count')->nullable();
             $t->integer('transaction_count')->nullable();
+
+            // retention bookkeeping. The uploads row is permanent (audit trail);
+            // its heavy artefacts are pruned independently.
+            $t->timestampTz('rows_pruned_at')->nullable();
+            $t->timestampTz('file_deleted_at')->nullable();
             $t->jsonb('header_map')->default('{}');       // discovered columns, for audit
             $t->text('failure_reason')->nullable();
             $t->unsignedBigInteger('uploaded_by')->nullable();
@@ -89,6 +94,12 @@ return new class extends Migration
             $t->string('rc_code')->nullable();
             $t->text('particulars')->nullable();
             $t->string('status', 8)->nullable();       // the 'W' column: I|NY|DD|CA
+
+            // The row's legend fill colour, resolved to its label. Carries status
+            // the 'W' column does not: rows marked CANCELLED whose W says I/NY,
+            // and UNISSUED BY CASHIER which has no W code at all. ~639 rows in
+            // the CY2026 workbook. Informational - A/C alone gates the ROD.
+            $t->string('status_flag')->nullable();
 
             // money (stable, typed - these drive every aggregation)
             $t->decimal('charging_breakdown', 15, 2)->nullable();

@@ -164,9 +164,9 @@ export default function Dashboard() {
                     >
                         <h2>Import your general ledger</h2>
                         <p>
-                            Upload your workbook to parse transactions, generate
-                            subsidiary ledgers, and build the monthly reports of
-                            disbursement.
+                            Upload the MDS 101 workbook to parse transactions,
+                            generate subsidiary ledgers, and build the monthly
+                            reports of disbursement.
                         </p>
                         <button
                             type="button"

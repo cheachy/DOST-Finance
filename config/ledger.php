@@ -1,19 +1,19 @@
 <?php
 
 /**
- * The ledger parsing configuration.
+ * This is the ledger parsing configuration.
  *
- * The header dictionary lives here as DATA. 
- * 
- * Column positions are discovered at import time by matching each column's header labels
+ * The header dictionary lives here as DATA, not code: column positions are
+ * discovered at import time by matching each column's header labels. Move a
+ * column, rename a header, or append a month and the importer adapts.
  *
- * The deduction/tax block is NOT listed. It can be discovered by
+ * The deduction/tax block is NOT listed field-by-field. It is discovered by
  * BOUNDARY ANCHORS and swept dynamically, because Philippine tax rules change
  * between years and the columns in that block are not stable. Whatever columns
  * exist between the anchors are captured into the tax_details jsonb, keyed by
  * the label the sheet itself uses.
  *
- * All keys are already normalized.
+ * All keys are "normalized": lower-cased, trimmed, whitespace collapsed.
  */
 return [
     'sheet'           => 'MDS 101',
@@ -29,7 +29,7 @@ return [
         'september' => 9, 'october' => 10, 'november' => 11, 'december' => 12,
     ],
 
-    // to skip (POSTING = processing dates/times)
+    // whole super-group blocks to skip (POSTING = processing dates/times)
     'ignore_super' => ['posting'],
 
     'header' => [
@@ -48,10 +48,10 @@ return [
             'jev #'              => 'jev_no',
             'remarks'            => 'remarks',
             'date'               => 'pay_date',      // POSTING dates ignored above
-            'rod'                => 'payment_mode',  // ROD A/C (ROD Block)
+            'rod'                => 'payment_mode',  // ROD A/C - gates the ROD block
         ],
 
-        
+        // the only fixed field inside the deduction block is the status flag
         'status_sub_label'    => 'w',
         'status_allowed_main' => ['', 'vat', 'wtx'],
 
@@ -85,6 +85,30 @@ return [
         'group_labels' => ['vat', 'wtx'],
     ],
 
+    /*
+     | Status legend (dynamic).
+     |
+     | The sheet carries a colour legend above the header: a filled swatch with
+     | its label in the cell to the right. It is discovered as the longest
+     | contiguous vertical run of (filled cell + text label) strictly above the
+     | header row - which correctly finds column W and ignores the similarly
+     | filled PROCESSING TIME block.
+     |
+     | Verified against CY2026, yielding 6 entries:
+     |   CURRENT YEAR DD, CURRENT NYDD, PY NY BECAME DD ON CURRENT YEAR,
+     |   RE-ISSUANCE, CANCELLED, UNISSUED BY CASHIER
+     |
+     | 639 data rows carry one of these fills. A new colour next year is picked
+     | up automatically.
+     */
+    'legend' => [
+        'min_entries' => 2,   // ignore runs shorter than this
+        // fills treated as "no fill"
+        'ignore_argb' => ['00000000', 'FFFFFFFF'],
+        // columns probed to read a data row's fill, first match wins
+        'probe_columns' => ['payee', 'charging', 'rc', 'particulars', 'obr_prefix'],
+    ],
+
     // canonical fields extracted per row, in order (remarks + payment_mode last)
     'fields' => [
         'obr_prefix', 'obr_no', 'payee', 'charging', 'rc', 'particulars', 'status',
@@ -110,6 +134,31 @@ return [
         'section'  => ['OBLIGATION', 'BECAME DD', 'BECOME DD', 'PRIOR MONTHS', 'NYDD', 'CANCELLED', 'REVERSION'],
     ],
 
-    // snapshot retention: keep this many past snapshots for audit, 0 = keep all
-    'keep_snapshots' => 5,
+    /*
+     | Retention.
+     |
+     | Three things accumulate at very different rates, so they are pruned
+     | separately:
+     |
+     |   uploads rows   ~1 KB each   -> kept forever (the audit trail)
+     |   ledger rows    ~2.8 MB/yr   -> kept for the newest N snapshots
+     |   workbook files ~10 MB each  -> kept for the newest N only
+     |
+     | Pruning ledger rows does NOT delete the uploads row: the history of who
+     | imported what and when survives at negligible cost, even once the row
+     | data behind it is gone.
+     |
+     | The current workbook file is kept because export uses it as the template
+     | that preserves the government format. Superseded files have no such use.
+     */
+    'keep_row_snapshots' => 2,   // snapshots that retain their general_ledgers rows
+    'keep_files'         => 1,   // workbook files kept on disk (0 = delete after parse)
+
+    /*
+     | raw_row stores the full original row per record. It roughly triples the
+     | stored payload (~1.1 MB vs ~0.5 MB per snapshot) and duplicates data
+     | already held in typed columns + tax_details. Enable only while debugging
+     | a new workbook layout.
+     */
+    'store_raw_row' => false,
 ];

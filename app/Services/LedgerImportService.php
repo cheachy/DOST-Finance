@@ -2,16 +2,18 @@
 
 namespace App\Services;
 
+use App\Exceptions\DuplicateLedgerUploadException;
 use App\Models\GeneralLedger;
 use App\Models\Upload;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
- * Dynamic importer for the General ledger.
+ * Dynamic importer for the MDS 101 general ledger.
  *
  * Nothing about rows or columns is hardcoded:
  *   1. detectHeaderRow()  finds the header band by its anchor labels.
@@ -37,8 +39,26 @@ class LedgerImportService
         $this->cfg = config('ledger');
     }
 
-    public function import(string $absolutePath, int $year, string $originalName, ?int $uploadedBy = null): Upload
-    {
+    /**
+     * @param  bool  $force  bypass the duplicate guard (re-import deliberately)
+     *
+     * @throws DuplicateLedgerUploadException
+     */
+    public function import(
+        string $absolutePath,
+        int $year,
+        string $originalName,
+        ?int $uploadedBy = null,
+        bool $force = false
+    ): Upload {
+        // ---- guard 1: identical bytes. Runs BEFORE anything is written, so a
+        // rejected duplicate never creates an uploads row or burns a snapshot.
+        $fileHash = hash_file('sha256', $absolutePath);
+
+        if (! $force && $prior = $this->findDuplicate($year, 'file_hash', $fileHash)) {
+            throw new DuplicateLedgerUploadException($prior, 'file');
+        }
+
         $upload = Upload::create([
             'original_name' => $originalName,
             'stored_path'   => $absolutePath,
@@ -46,6 +66,7 @@ class LedgerImportService
             'fiscal_year'   => $year,
             'status'        => 'parsing',
             'is_current'    => false,
+            'file_hash'     => $fileHash,
             'uploaded_by'   => $uploadedBy,
         ]);
 
@@ -53,7 +74,18 @@ class LedgerImportService
             $sheet   = $this->loadSheet($absolutePath);
             $mainRow = $this->detectHeaderRow($sheet);
             $map     = $this->buildColumnMap($sheet, $mainRow);
-            $records = $this->parseRows($sheet, $mainRow, $map, $year);
+            $legend  = $this->discoverLegend($sheet, $mainRow);
+            $records = $this->parseRows($sheet, $mainRow, $map, $year, $legend);
+
+            // ---- guard 2: identical data. Excel rewrites bytes on every save
+            // (timestamps, recalc chains), so a workbook can be byte-different
+            // yet carry exactly the same ledger. Fingerprint the parsed rows.
+            $contentHash = $this->contentHash($records);
+
+            if (! $force && $prior = $this->findDuplicate($year, 'content_hash', $contentHash, $upload->id)) {
+                $upload->delete();
+                throw new DuplicateLedgerUploadException($prior, 'content');
+            }
 
             $transactions = 0;
             foreach ($records as $rec) {
@@ -62,7 +94,7 @@ class LedgerImportService
                 }
             }
 
-            DB::transaction(function () use ($records, $upload, $map, $transactions) {
+            DB::transaction(function () use ($records, $upload, $map, $transactions, $contentHash) {
                 foreach (array_chunk($records, 500) as $chunk) {
                     GeneralLedger::insert(array_map(
                         fn ($rec) => $this->toRow($rec, $upload->id),
@@ -78,13 +110,16 @@ class LedgerImportService
                 $upload->update([
                     'status'            => 'done',
                     'is_current'        => true,
+                    'content_hash'      => $contentHash,
                     'row_count'         => count($records),
                     'transaction_count' => $transactions,
                     'header_map'        => $this->describeMap($map),
                 ]);
             });
 
-            $this->pruneOldSnapshots($upload);
+            $this->applyRetention($upload);
+        } catch (DuplicateLedgerUploadException $e) {
+            throw $e;   // the upload row is already removed; nothing to mark
         } catch (\Throwable $e) {
             $upload->update(['status' => 'failed', 'failure_reason' => $e->getMessage()]);
             throw $e;
@@ -93,25 +128,95 @@ class LedgerImportService
         return $upload->fresh();
     }
 
-    /** Drop the oldest snapshots, keeping the newest N for audit. */
-    protected function pruneOldSnapshots(Upload $current): void
+    /** An already-completed import of the same workbook, if one exists. */
+    protected function findDuplicate(int $year, string $column, string $hash, ?int $excludeId = null): ?Upload
     {
-        $keep = (int) ($this->cfg['keep_snapshots'] ?? 0);
-        if ($keep <= 0) {
-            return;
-        }
-
-        Upload::where('fiscal_year', $current->fiscal_year)
+        return Upload::where('fiscal_year', $year)
             ->where('status', 'done')
-            ->orderByDesc('id')
-            ->skip($keep)
-            ->take(PHP_INT_MAX)
-            ->get()
-            ->each
-            ->delete();   // cascades to general_ledgers
+            ->where($column, $hash)
+            ->when($excludeId, fn ($q) => $q->where('id', '!=', $excludeId))
+            ->orderBy('id')
+            ->first();
     }
 
-    // loading
+    /**
+     * Fingerprint the parsed ledger, ignoring everything outside the data:
+     * file metadata, styling, and recalculated formula chains.
+     *
+     * Deliberately excludes raw_row (carries incidental cell noise) so a
+     * cosmetic re-save is recognised as unchanged data.
+     */
+    protected function contentHash(array $records): string
+    {
+        $ctx = hash_init('sha256');
+
+        foreach ($records as $rec) {
+            $slim = [
+                'r' => $rec['source_row'],
+                't' => $rec['row_type'],
+                'y' => $rec['ledger_year'],
+                'm' => $rec['ledger_month'],
+                'x' => $rec['tax_details'],
+            ];
+            foreach ($this->cfg['fields'] as $field) {
+                $slim[$field] = $rec[$field] ?? null;
+            }
+            ksort($slim);
+            hash_update($ctx, json_encode($slim) . "\n");
+        }
+
+        return hash_final($ctx);
+    }
+
+    /**
+     * Tiered retention.
+     *
+     * The uploads row is never deleted: it is the audit trail (who imported
+     * what, when, with which fingerprint) and costs about a kilobyte. What gets
+     * reclaimed is the heavy material behind it:
+     *
+     *   - general_ledgers rows for snapshots older than keep_row_snapshots
+     *   - the stored workbook for snapshots older than keep_files
+     *
+     * The current workbook is retained because export uses it as the template
+     * that preserves the government format.
+     */
+    protected function applyRetention(Upload $current): void
+    {
+        $completed = Upload::where('fiscal_year', $current->fiscal_year)
+            ->where('status', 'done')
+            ->orderByDesc('id')
+            ->get();
+
+        $keepRows  = (int) ($this->cfg['keep_row_snapshots'] ?? 2);
+        $keepFiles = (int) ($this->cfg['keep_files'] ?? 1);
+
+        foreach ($completed as $i => $upload) {
+            // rank 0 is the newest (the snapshot just imported)
+            if ($keepRows > 0 && $i >= $keepRows && ! $upload->rows_pruned_at) {
+                GeneralLedger::where('upload_id', $upload->id)->delete();
+                $upload->forceFill(['rows_pruned_at' => now()])->save();
+            }
+
+            if ($i >= $keepFiles && ! $upload->file_deleted_at) {
+                $this->deleteStoredFile($upload);
+            }
+        }
+    }
+
+    /** Remove the workbook from disk, tolerating an already-missing file. */
+    protected function deleteStoredFile(Upload $upload): void
+    {
+        $path = $upload->stored_path;
+
+        if ($path && is_file($path)) {
+            @unlink($path);
+        }
+
+        $upload->forceFill(['file_deleted_at' => now()])->save();
+    }
+
+    // ---------------------------------------------------------------- loading
 
     protected function loadSheet(string $path): Worksheet
     {
@@ -124,7 +229,7 @@ class LedgerImportService
     }
 
     /** Cached value of a cell (formula result if it is a formula). */
-    protected function cellVal(Worksheet $sheet, int $row, int $col)
+    protected function cellVal(Worksheet $sheet, int $row, int $col): mixed
     {
         $coord = Coordinate::stringFromColumnIndex($col) . $row;
         if (! $sheet->cellExists($coord)) {
@@ -139,9 +244,9 @@ class LedgerImportService
         return $v === '' ? null : $v;
     }
 
-    // header band
+    // ------------------------------------------------------------ header band
 
-    protected function norm($v): string
+    protected function norm(mixed $v): string
     {
         if ($v === null || $v === '') {
             return '';
@@ -197,7 +302,7 @@ class LedgerImportService
         return $look;
     }
 
-    protected function bandValue(Worksheet $sheet, int $row, int $col, array $merges)
+    protected function bandValue(Worksheet $sheet, int $row, int $col, array $merges): mixed
     {
         $direct = $this->cellVal($sheet, $row, $col);
         if ($direct !== null && $direct !== '') {
@@ -306,6 +411,89 @@ class LedgerImportService
         return $block;
     }
 
+    // ------------------------------------------------------------ status legend
+
+    /**
+     * Discover the colour legend without hardcoding its position.
+     *
+     * The legend is the longest contiguous vertical run of (filled cell + text
+     * label immediately to its right) strictly above the header row. That rule
+     * finds column W on the CY2026 sheet and correctly ignores the similarly
+     * filled PROCESSING TIME block, which only runs three rows.
+     *
+     * @return array<string,string>  ARGB => label
+     */
+    protected function discoverLegend(Worksheet $sheet, int $mainRow): array
+    {
+        $cfg  = $this->cfg['legend'];
+        $cols = $this->highestColumn($sheet);
+        $best = [];
+
+        for ($c = 1; $c <= $cols; $c++) {
+            $run = [];
+            for ($r = 1; $r < $mainRow; $r++) {
+                $argb  = $this->fillArgb($sheet, $r, $c);
+                $label = $this->cellVal($sheet, $r, $c + 1);
+
+                if ($argb !== null && is_string($label) && trim($label) !== '') {
+                    $run[$argb] = trim($label);
+                } else {
+                    if (count($run) > count($best)) {
+                        $best = $run;
+                    }
+                    $run = [];
+                }
+            }
+            if (count($run) > count($best)) {
+                $best = $run;
+            }
+        }
+
+        return count($best) >= ($cfg['min_entries'] ?? 2) ? $best : [];
+    }
+
+    /** A cell's solid fill colour as ARGB, or null when effectively unfilled. */
+    protected function fillArgb(Worksheet $sheet, int $row, int $col): ?string
+    {
+        $coord = Coordinate::stringFromColumnIndex($col) . $row;
+        if (! $sheet->cellExists($coord)) {
+            return null;
+        }
+
+        $fill = $sheet->getStyle($coord)->getFill();
+        if ($fill->getFillType() === null || $fill->getFillType() === Fill::FILL_NONE) {
+            return null;
+        }
+
+        $argb = $fill->getStartColor()->getARGB();
+        if (! is_string($argb) || in_array($argb, $this->cfg['legend']['ignore_argb'], true)) {
+            return null;
+        }
+
+        return $argb;
+    }
+
+    /** The legend label for a data row, read from the first probe column that hits. */
+    protected function rowStatusFlag(Worksheet $sheet, int $row, array $map, array $legend): ?string
+    {
+        if (! $legend) {
+            return null;
+        }
+
+        foreach ($this->cfg['legend']['probe_columns'] as $field) {
+            $col = $map[$field] ?? null;
+            if (! is_int($col)) {
+                continue;
+            }
+            $argb = $this->fillArgb($sheet, $row, $col);
+            if ($argb !== null && isset($legend[$argb])) {
+                return $legend[$argb];
+            }
+        }
+
+        return null;
+    }
+
     protected function canon(?string $sup, ?string $main, ?string $sub): ?string
     {
         $s = $this->norm($sup);
@@ -350,22 +538,22 @@ class LedgerImportService
 
     // --------------------------------------------------------------- parsing
 
-    protected function isNum($v): bool
+    protected function isNum(mixed $v): bool
     {
         return is_int($v) || is_float($v);
     }
 
-    protected function isStr($v): bool
+    protected function isStr(mixed $v): bool
     {
         return is_string($v) && trim($v) !== '';
     }
 
-    protected function get(array $row, string $field)
+    protected function get(array $row, string $field): mixed
     {
         return $row[$field] ?? null;
     }
 
-    protected function parseRows(Worksheet $sheet, int $mainRow, array $map, int $year): array
+    protected function parseRows(Worksheet $sheet, int $mainRow, array $map, int $year, array $legend = []): array
     {
         $records = [];
         $month   = null;
@@ -403,7 +591,11 @@ class LedgerImportService
                 $month = $this->cfg['months'][$this->norm($this->get($row, 'payee'))] ?? $month;
             }
 
-            $records[] = $this->extract($row, $tax, $r, $year, $month, $type);
+            $flag = $type === 'transaction'
+                ? $this->rowStatusFlag($sheet, $r, $map, $legend)
+                : null;
+
+            $records[] = $this->extract($row, $tax, $r, $year, $month, $type, $flag);
         }
 
         return $records;
@@ -478,13 +670,14 @@ class LedgerImportService
         return false;
     }
 
-    protected function extract(array $row, array $tax, int $sourceRow, int $year, ?int $month, string $type): array
+    protected function extract(array $row, array $tax, int $sourceRow, int $year, ?int $month, string $type, ?string $statusFlag = null): array
     {
         $rec = [
             'source_row'   => $sourceRow,
             'row_type'     => $type,
             'ledger_year'  => $year,
             'ledger_month' => $month,
+            'status_flag'  => $statusFlag,
             'tax_details'  => [],
             'extras'       => [],
             'raw_row'      => [],
@@ -514,12 +707,14 @@ class LedgerImportService
             $rec['payment_mode'] = null;
         }
 
-        $rec['raw_row'] = $row + ['__tax__' => $tax];
+        $rec['raw_row'] = ($this->cfg['store_raw_row'] ?? false)
+            ? $row + ['__tax__' => $tax]
+            : [];
 
         return $rec;
     }
 
-    protected function toDate($v): ?string
+    protected function toDate(mixed $v): ?string
     {
         if ($v === null || $v === '') {
             return null;
@@ -543,6 +738,7 @@ class LedgerImportService
             'row_type'     => $rec['row_type'],
             'ledger_year'  => $rec['ledger_year'],
             'ledger_month' => $rec['ledger_month'],
+            'status_flag'  => $rec['status_flag'] ?? null,
             'tax_details'  => json_encode((object) $rec['tax_details']),
             'extras'       => json_encode((object) $rec['extras']),
             'raw_row'      => json_encode((object) $rec['raw_row']),

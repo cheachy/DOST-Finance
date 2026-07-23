@@ -8,8 +8,7 @@ interface AppLayoutProps {
     children: ReactNode;
 }
 
-/* Sidebar is organised around NOUNS (places), not verbs (actions).
-   Import / generate / export are buttons inside the document they act on. */
+/* Sidebars */
 const NAV = [
     { key: "dashboard", label: "Dashboard", href: "/dashboard", icon: "grid" },
     { key: "ledger", label: "General ledger", href: "/ledger", icon: "book" },
@@ -94,9 +93,7 @@ export default function AppLayout({ user, current, children }: AppLayoutProps) {
                         <span className="app-sidebar__brand-org">
                             DOST CARAGA
                         </span>
-                        <span className="app-sidebar__brand-app">
-                            Finance Admin
-                        </span>
+                        <span className="app-sidebar__brand-app">FAS</span>
                     </span>
                 </div>
 
