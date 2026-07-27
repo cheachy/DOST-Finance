@@ -25,7 +25,7 @@ class DashboardController extends Controller
                 'id'                => $upload->id,
                 'original_name'     => $upload->original_name,
                 'fiscal_year'       => $upload->fiscal_year,
-                'imported_at'       => $upload->created_at?->format('M j, Y g:i A'),
+                'imported_at'       => $upload->created_at?->timezone('Asia/Manila')->format('M j, Y g:i A'),
                 'transaction_count' => $upload->transaction_count ?? 0,
                 'months'            => $upload->months(),
             ] : null,
