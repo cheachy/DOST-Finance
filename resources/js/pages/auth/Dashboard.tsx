@@ -3,6 +3,8 @@ import { useRef, useState, ChangeEvent, DragEvent } from "react";
 import AppLayout from "../../layouts/AppLayout";
 import "../../../css/theme.css";
 import "../../../css/dashboard.css";
+import LiveDate from "../../components/LiveMeta";
+import LiveMeta from "../../components/LiveMeta";
 
 interface Snapshot {
     id: number;
@@ -122,15 +124,7 @@ export default function Dashboard() {
                 </div>
                 <div className="dash-topbar__meta">
                     <span>Butuan City, PH</span>
-                    <span className="dash-topbar__clock">
-                        {new Date().toLocaleString("en-PH", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                            hour: "numeric",
-                            minute: "2-digit",
-                        })}
-                    </span>
+                    <LiveMeta />
                 </div>
             </header>
 
@@ -164,9 +158,9 @@ export default function Dashboard() {
                     >
                         <h2>Import your general ledger</h2>
                         <p>
-                            Upload the MDS 101 workbook to parse transactions,
-                            generate subsidiary ledgers, and build the monthly
-                            reports of disbursement.
+                            Upload your workbook to parse transactions, generate
+                            subsidiary ledgers, and build the monthly reports of
+                            disbursement.
                         </p>
                         <button
                             type="button"

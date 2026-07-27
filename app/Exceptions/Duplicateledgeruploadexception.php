@@ -15,7 +15,7 @@ class DuplicateLedgerUploadException extends RuntimeException
 {
     public function __construct(
         public readonly Upload $existing,
-        public readonly string $matchedOn   // 'file' | 'content'
+        public readonly string $matchedOn   // either as 'file' | 'content'
     ) {
         $when = $existing->created_at?->format('M j, Y g:i A') ?? 'earlier';
 

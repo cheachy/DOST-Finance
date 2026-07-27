@@ -2,6 +2,7 @@ import { Head, usePage } from "@inertiajs/react";
 import AppLayout from "../layouts/AppLayout";
 import "../../css/theme.css";
 import "../../css/dashboard.css";
+import LiveMeta from "./LiveMeta";
 
 interface PlaceholderProps {
     title: string;
@@ -10,8 +11,7 @@ interface PlaceholderProps {
 }
 
 /**
- * Shared "not built yet" page, so the sidebar links resolve while the later
- * phases are still in progress. Replace each usage with the real page.
+ * Not yet built.
  */
 export default function Placeholder({
     title,
@@ -30,12 +30,16 @@ export default function Placeholder({
                     <h1 className="dash-topbar__title">{title}</h1>
                     <p className="dash-topbar__sub">{blurb}</p>
                 </div>
+                <div className="dash-topbar__meta">
+                    <span>Butuan City, PH</span>
+                    <LiveMeta />
+                </div>
             </header>
 
             <div className="dash-body">
                 <section className="dash-card">
                     <div className="dash-empty">
-                        <p>This section isn’t built yet.</p>
+                        <p>This section isn't built yet.</p>
                     </div>
                 </section>
             </div>

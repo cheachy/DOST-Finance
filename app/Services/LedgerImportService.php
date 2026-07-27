@@ -15,14 +15,14 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 /**
  * Dynamic importer for the MDS 101 general ledger.
  *
- * Nothing about rows or columns is hardcoded:
+ * Nothing about rows or columns is hardcoded. 
  *   1. detectHeaderRow()  finds the header band by its anchor labels.
  *   2. buildColumnMap()   maps columns to canonical fields via config('ledger'),
  *                         and discovers the deduction/tax block by boundary
  *                         anchors so a tax-law change needs no code change.
  *   3. parseRows()        segments months by divider rows and classifies each row.
  *
- * IMPORT IS A SNAPSHOT, NOT AN APPEND. The accountant keeps one workbook and
+ * Every import is a snapshot. The accountant keeps one workbook and
  * re-imports it as months are appended. Each import stores a complete snapshot
  * under a new upload and marks it current, so re-importing the same growing
  * file cannot duplicate earlier months, and a payment mode that was blank
@@ -40,7 +40,7 @@ class LedgerImportService
     }
 
     /**
-     * @param  bool  $force  bypass the duplicate guard (re-import deliberately)
+     * @param  bool  $force  // force re-import
      *
      * @throws DuplicateLedgerUploadException
      */
@@ -51,7 +51,7 @@ class LedgerImportService
         ?int $uploadedBy = null,
         bool $force = false
     ): Upload {
-        // ---- guard 1: identical bytes. Runs BEFORE anything is written, so a
+        // 1. Validation: identical bytes. Runs BEFORE anything is written, so a
         // rejected duplicate never creates an uploads row or burns a snapshot.
         $fileHash = hash_file('sha256', $absolutePath);
 
@@ -77,8 +77,7 @@ class LedgerImportService
             $legend  = $this->discoverLegend($sheet, $mainRow);
             $records = $this->parseRows($sheet, $mainRow, $map, $year, $legend);
 
-            // ---- guard 2: identical data. Excel rewrites bytes on every save
-            // (timestamps, recalc chains), so a workbook can be byte-different
+            // Validation 2: identical data. a workbook can be byte-different
             // yet carry exactly the same ledger. Fingerprint the parsed rows.
             $contentHash = $this->contentHash($records);
 
@@ -193,12 +192,12 @@ class LedgerImportService
 
         foreach ($completed as $i => $upload) {
             // rank 0 is the newest (the snapshot just imported)
-            if ($keepRows > 0 && $i >= $keepRows && ! $upload->rows_pruned_at) {
+            if ($keepRows > 0 && $i >= $keepRows && !$upload->rows_pruned_at) {
                 GeneralLedger::where('upload_id', $upload->id)->delete();
                 $upload->forceFill(['rows_pruned_at' => now()])->save();
             }
 
-            if ($i >= $keepFiles && ! $upload->file_deleted_at) {
+            if ($i >= $keepFiles && !$upload->file_deleted_at) {
                 $this->deleteStoredFile($upload);
             }
         }
@@ -216,7 +215,7 @@ class LedgerImportService
         $upload->forceFill(['file_deleted_at' => now()])->save();
     }
 
-    // ---------------------------------------------------------------- loading
+    // loading
 
     protected function loadSheet(string $path): Worksheet
     {
@@ -244,7 +243,7 @@ class LedgerImportService
         return $v === '' ? null : $v;
     }
 
-    // ------------------------------------------------------------ header band
+    // header band
 
     protected function norm(mixed $v): string
     {
@@ -382,7 +381,7 @@ class LedgerImportService
                     $end = $c;
                     break 2;
                 }
-            }
+            } 
         }
         if (! $end) {
             return [];
@@ -520,7 +519,7 @@ class LedgerImportService
         return null;
     }
 
-    /** Human-readable column map, stored on the upload for audit. */
+    /* Human-readable column map, stored on the upload for audit. */
     protected function describeMap(array $map): array
     {
         $out = ['fields' => [], 'tax_details' => []];
@@ -536,7 +535,7 @@ class LedgerImportService
         return $out;
     }
 
-    // --------------------------------------------------------------- parsing
+    // parsing
 
     protected function isNum(mixed $v): bool
     {
