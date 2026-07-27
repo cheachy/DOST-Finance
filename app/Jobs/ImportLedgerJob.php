@@ -50,7 +50,7 @@ class ImportLedgerJob implements ShouldQueue
                 'transactions' => $upload->transaction_count,
             ]);
         } catch (DuplicateLedgerUploadException $e) {
-            // Not a failure: the workbook is already imported and unchanged.
+            // The workbook is already imported and unchanged.
             Log::info('Ledger import skipped as duplicate', [
                 'matched_on' => $e->matchedOn,
                 'existing'   => $e->existing->id,
