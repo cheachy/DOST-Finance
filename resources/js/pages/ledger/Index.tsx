@@ -18,6 +18,7 @@ interface Row {
     status_flag: string | null;
     gross: string | null;
     net: string | null;
+    dv: string | null;
     payment_mode: string | null;
     pay_date: string | null;
 }
@@ -99,9 +100,10 @@ export default function Index() {
                                         <th>Charging</th>
                                         <th>RC</th>
                                         <th>Particulars</th>
-                                        <th>St</th>
+                                        <th>W</th>
                                         <th className="num">Gross</th>
                                         <th className="num">Net</th>
+                                        <th>DV</th>
                                         <th>A/C</th>
                                         <th>Date</th>
                                     </tr>
@@ -130,6 +132,7 @@ export default function Index() {
                                             <td className="num">
                                                 {peso(r.net)}
                                             </td>
+                                            <td className="ellip">{r.dv}</td>
                                             <td className="center">
                                                 {r.payment_mode}
                                             </td>

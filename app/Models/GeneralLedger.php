@@ -93,4 +93,11 @@ class GeneralLedger extends Model
             ? trim(($this->obr_prefix ?? '').'-'.($this->obr_no ?? ''), '-')
             : null;
     }
+
+    public function dvNumber(): ?string
+    {
+        return $this->dv_prefix || $this->dv_no
+            ? trim(($this->dv_prefix ?? '').'-'.($this->dv_no ?? ''), '-')
+            : null;
+    }
 }

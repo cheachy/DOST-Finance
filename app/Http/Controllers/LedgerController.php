@@ -57,6 +57,7 @@ class LedgerController extends Controller
                 'status_flag' => $r->status_flag,
                 'gross' => $r->gross_amount,
                 'net' => $r->net_amount,
+                'dv' => $r->dvNumber(),
                 'payment_mode' => $r->payment_mode,
                 'pay_date' => optional($r->payment_date)->format('Y-m-d'),
             ]);
