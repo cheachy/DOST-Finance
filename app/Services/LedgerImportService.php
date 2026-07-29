@@ -221,7 +221,9 @@ class LedgerImportService
     protected function loadSheet(string $path): Worksheet
     {
         $reader = IOFactory::createReaderForFile($path);
-        $reader->setReadEmptyCells(false);
+        // NOTE: do NOT setReadEmptyCells(false). Status-coloured cells often carry
+        // a fill but no value; skipping empty cells drops them before their fill
+        // can be read, which makes every status_flag come back null.
         $spreadsheet = $reader->load($path);
 
         return $spreadsheet->getSheetByName($this->cfg['sheet'])
