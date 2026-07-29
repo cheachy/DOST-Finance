@@ -37,7 +37,5 @@ class ImportController extends Controller
             // columns) — surface this clearly rather than a generic 500.
             return back()->withErrors(['file' => $e->getMessage()]);
         }
-
-        return redirect()->route('imports.preview', $import->id);
     }
 }
