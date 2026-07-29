@@ -6,7 +6,8 @@
 /* ---- shell -------------------------------------------------------------- */
 .app-shell {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   background: #f4f6fa;
   font-family: var(--font-sans);
   color: var(--aslr-text);
@@ -82,7 +83,7 @@
   font-size: 9px; letter-spacing: .08em; color: #3d4658;
 }
 
-.app-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.app-main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
 
 /* ---- topbar ------------------------------------------------------------- */
 .dash-topbar {
@@ -98,7 +99,7 @@
 .dash-topbar__clock { font-family: var(--font-mono); margin-top: 2px; }
 
 /* ---- body --------------------------------------------------------------- */
-.dash-body { padding: 20px 28px 32px; display: flex; flex-direction: column; gap: 16px; }
+.dash-body { padding: 20px 28px 32px; display: flex; flex-direction: column; gap: 16px; flex: 1; min-height: 0; overflow-y: auto; }
 
 .dash-flash {
   padding: 11px 14px; border-radius: 8px; font-size: 13px; margin: 0;

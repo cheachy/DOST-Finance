@@ -1,190 +1,158 @@
-.ledger-container {
-  margin-top: 2rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-  display: flex;
-  flex-direction: column;
+/* ==========================================================================
+   Talaan — general-ledger view (read-only grid) + month selector
+   ========================================================================== */
+
+/* ---- month selector ----------------------------------------------------- */
+.month-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.month-chip {
+    padding: 6px 14px;
+    border: 1px solid var(--aslr-border);
+    border-radius: 20px;
+    background: #fff;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--aslr-text);
+    cursor: pointer;
+    transition:
+        background-color 0.15s,
+        border-color 0.15s,
+        color 0.15s;
+}
+.month-chip:hover:not(:disabled):not(.is-active) {
+    background: #f4f6fa;
+    border-color: #cdd5e1;
+}
+.month-chip.is-active {
+    background: var(--dost-blue);
+    border-color: var(--dost-blue);
+    color: #fff;
+}
+.month-chip:disabled {
+    opacity: 0.4;
+    cursor: default;
 }
 
-.ledger-header {
-  padding: 1rem 1.5rem;
-  background: var(--surface-hover);
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+/* ---- table -------------------------------------------------------------- */
+.ledger-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    background: #fff;
+    border: 1px solid #e7eaf0;
+    border-radius: 12px;
 }
-
-.ledger-header h2 {
-  margin: 0;
-  font-size: 1.1rem;
-  color: var(--text-primary);
-  font-weight: 600;
-}
-
-.ledger-count {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-}
-
-.ledger-table-wrapper {
-  overflow-x: auto;
-  overflow-y: auto;
-  max-height: 600px;
-}
-
 .ledger-table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: left;
-  font-size: 0.85rem;
-  white-space: nowrap;
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    white-space: nowrap;
+}
+.ledger-table thead th {
+    position: sticky;
+    top: 0;
+    background: #f7f9fc;
+    border-bottom: 1px solid #e7eaf0;
+    padding: 9px 12px;
+    text-align: left;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--aslr-muted);
+}
+.ledger-table tbody td {
+    padding: 7px 12px;
+    border-bottom: 1px solid #f1f3f7;
+}
+.ledger-table tbody tr:hover {
+    background: #fafbfd;
 }
 
-.ledger-table th {
-  background: var(--surface-hover);
-  color: var(--text-secondary);
-  font-weight: 600;
-  padding: 0.75rem 1rem;
-  border-bottom: 2px solid var(--border);
-  border-right: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-size: 0.75rem;
+.ledger-table .num {
+    text-align: right;
+    font-family: var(--font-mono);
+}
+.ledger-table .center {
+    text-align: center;
+}
+.ledger-table .muted {
+    color: var(--aslr-faint);
+}
+.ledger-table .ellip {
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.ledger-table th:last-child {
-  border-right: none;
+/* non-transaction rows (dividers, subtotals, headers) sit quietly in the background */
+.row--meta td {
+    color: var(--aslr-faint);
+    font-style: italic;
+    background: #fcfcfd;
 }
 
-.ledger-table td {
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--border);
-  border-right: 1px solid var(--border);
-  color: var(--text-primary);
+/* status_flag tints — soft, matching the workbook's legend colours */
+.row--dd {
+    background: #f6f0ff;
+} /* CURRENT YEAR DD (light purple) */
+.row--nydd {
+    background: #eef7ea;
+} /* CURRENT NYDD (green) */
+.row--becamedd {
+    background: #efe8ff;
+} /* PY NY BECAME DD (darker purple) */
+.row--cancelled {
+    background: #fffce0;
+} /* CANCELLED (yellow) */
+.row--unissued {
+    background: #fff2df;
+} /* UNISSUED BY CASHIER (orange) */
+.row--dd:hover,
+.row--nydd:hover,
+.row--becamedd:hover,
+.row--cancelled:hover,
+.row--unissued:hover {
+    filter: brightness(0.98);
 }
 
-.ledger-table td:last-child {
-  border-right: none;
+/* ---- pager -------------------------------------------------------------- */
+.ledger-pager {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: 12px;
 }
-
-.ledger-table tr:hover td {
-  background: rgba(255, 255, 255, 0.03);
+.ledger-pager__links {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
 }
-
-/* Number columns formatting */
-.col-num {
-  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
-  text-align: right;
-  color: var(--text-secondary) !important;
+.ledger-pager__link {
+    min-width: 30px;
+    padding: 5px 9px;
+    border: 1px solid var(--aslr-border);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--aslr-text);
+    text-decoration: none;
+    text-align: center;
+    font-size: 12px;
 }
-
-/* Specific styling for financial amounts */
-.col-amount {
-  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
-  text-align: right;
-  font-weight: 500;
+.ledger-pager__link:hover:not(.is-disabled):not(.is-active) {
+    background: #f4f6fa;
 }
-
-.amount-positive {
-  color: #10b981 !important; /* Tailwind emerald-500 */
+.ledger-pager__link.is-active {
+    background: var(--dost-blue);
+    border-color: var(--dost-blue);
+    color: #fff;
 }
-
-.amount-negative {
-  color: #ef4444 !important; /* Tailwind red-500 */
-}
-
-.col-date {
-  color: var(--text-secondary) !important;
-}
-
-.col-particulars {
-  white-space: normal;
-  min-width: 250px;
-  max-width: 400px;
-  line-height: 1.4;
-}
-
-/* Empty state */
-.ledger-empty {
-  padding: 3rem;
-  text-align: center;
-  color: var(--text-secondary);
-  font-style: italic;
-}
-
-/* Full-Screen Layout Styles */
-.ledger-fullscreen {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  width: 100vw;
-  background: var(--background);
-  overflow: hidden;
-}
-
-.ledger-fullscreen-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.5rem;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-.ledger-fullscreen-header .header-left {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-}
-
-.ledger-fullscreen-header h1 {
-  margin: 0;
-  font-size: 1.25rem;
-  color: var(--text-primary);
-  font-weight: 600;
-}
-
-.back-btn {
-  padding: 0.5rem 1rem;
-  background: var(--surface-hover);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text-primary);
-  text-decoration: none;
-  font-size: 0.9rem;
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.back-btn:hover {
-  background: var(--border);
-}
-
-.record-count {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  font-weight: 500;
-}
-
-.ledger-fullscreen-main {
-  flex-grow: 1;
-  overflow: hidden; /* Let the wrapper handle scrolling */
-  display: flex;
-  flex-direction: column;
-  background: var(--surface);
-}
-
-.ledger-table-wrapper-full {
-  flex-grow: 1;
-  overflow-x: auto;
-  overflow-y: auto;
-  height: 100%;
+.ledger-pager__link.is-disabled {
+    opacity: 0.4;
 }
