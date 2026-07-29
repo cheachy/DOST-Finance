@@ -21,7 +21,7 @@ class ImportController extends Controller
         // Explicitly the 'local' disk, not whatever FILESYSTEM_DISK
         // happens to default to — this feature needs a real local file
         $originalName = $request->file('file')->getClientOriginalName();
-        $filename = date('Ymd_His') . '_' . $originalName;
+        $filename = date('Ymd_His').'_'.$originalName;
         $path = $request->file('file')->storeAs('ledger-imports', $filename, 'local');
         $fullPath = Storage::disk('local')->path($path);
 

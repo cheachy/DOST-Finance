@@ -16,7 +16,7 @@
  * All keys are "normalized": lower-cased, trimmed, whitespace collapsed.
  */
 return [
-    'sheet'           => 'MDS 101',
+    'sheet' => 'MDS 101',
     'header_scan_max' => 40,   // how many top rows to scan for the header band
     'blank_run_limit' => 80,   // stop after this many consecutive blank rows
 
@@ -35,28 +35,28 @@ return [
     'header' => [
         // matched on the MAIN header label -> canonical field
         'by_main' => [
-            'obr #'              => 'obr_prefix',
-            'payee'              => 'payee',
-            'charging'           => 'charging',
-            'rc'                 => 'rc',
-            'particulars'        => 'particulars',
+            'obr #' => 'obr_prefix',
+            'payee' => 'payee',
+            'charging' => 'charging',
+            'rc' => 'rc',
+            'particulars' => 'particulars',
             'charging breakdown' => 'charging_breakdown',
-            'gross'              => 'gross',
-            'net'                => 'net',
-            'receipts'           => 'receipts',
-            'acct codes'         => 'acct_code',
-            'jev #'              => 'jev_no',
-            'remarks'            => 'remarks',
-            'date'               => 'pay_date',      // POSTING dates ignored above
-            'rod'                => 'payment_mode',  // ROD A/C - gates the ROD block
+            'gross' => 'gross',
+            'net' => 'net',
+            'receipts' => 'receipts',
+            'acct codes' => 'acct_code',
+            'jev #' => 'jev_no',
+            'remarks' => 'remarks',
+            'date' => 'pay_date',      // POSTING dates ignored above
+            'rod' => 'payment_mode',  // ROD A/C - gates the ROD block
         ],
 
         // the only fixed field inside the deduction block is the status flag
-        'status_sub_label'    => 'w',
+        'status_sub_label' => 'w',
         'status_allowed_main' => ['', 'vat', 'wtx'],
 
         // split columns
-        'dv_main'        => 'dv#',        // two merged cols -> dv_prefix, dv_no
+        'dv_main' => 'dv#',        // two merged cols -> dv_prefix, dv_no
         'obr_split_from' => 'obr_prefix', // obr_no = the column right after OBR #
     ],
 
@@ -77,7 +77,7 @@ return [
      */
     'tax_block' => [
         'start_after' => 'particulars',
-        'end_labels'  => ['total deductions'],
+        'end_labels' => ['total deductions'],
         'skip_labels' => ['w', 'checking', 'total'],
         // a sub label beginning with "/" continues its main label
         'join_continuation' => true,
@@ -119,9 +119,9 @@ return [
     // canonical parser field -> general_ledgers column (unlisted map 1:1)
     'column_map' => [
         'charging' => 'charging_code',
-        'rc'       => 'rc_code',
-        'gross'    => 'gross_amount',
-        'net'      => 'net_amount',
+        'rc' => 'rc_code',
+        'gross' => 'gross_amount',
+        'net' => 'net_amount',
         'pay_date' => 'payment_date',
     ],
 
@@ -131,7 +131,7 @@ return [
     // row-classification markers (matched against payee + particulars + rod)
     'markers' => [
         'subtotal' => ['TOTAL', 'PS TAX', 'PS ACCTG', 'PS BUDGET', 'ACCOUNTING', 'BUDGET'],
-        'section'  => ['OBLIGATION', 'BECAME DD', 'BECOME DD', 'PRIOR MONTHS', 'NYDD', 'CANCELLED', 'REVERSION'],
+        'section' => ['OBLIGATION', 'BECAME DD', 'BECOME DD', 'PRIOR MONTHS', 'NYDD', 'CANCELLED', 'REVERSION'],
     ],
 
     /*
@@ -152,7 +152,7 @@ return [
      | that preserves the government format. Superseded files have no such use.
      */
     'keep_row_snapshots' => 2,   // snapshots that retain their general_ledgers rows
-    'keep_files'         => 1,   // workbook files kept on disk (0 = delete after parse)
+    'keep_files' => 1,   // workbook files kept on disk (0 = delete after parse)
 
     /*
      | raw_row stores the full original row per record. It roughly triples the

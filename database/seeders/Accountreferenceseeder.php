@@ -25,23 +25,23 @@ class AccountReferenceSeeder extends Seeder
 {
     /** Variants seen in the ledger that aren't in Ref -> canonical Ref code. */
     private const ALIASES = [
-        'regular-onelab'                => 'Regular MOOE (Onelab)',
-        'regular-emieerald'             => 'Regular MOOE (Emieerald)',
-        'prior years payable'           => 'Prior Year Payables',
-        'setup-non refund'              => 'SETUP Non Refund',
-        'setup-non refund (s&t trngs)'  => 'SETUP Non Refund',
-        'setup-pmb'                     => 'SETUP PMB',
-        'saa-ifwd cntg'                 => 'SAA-SARAI cntg (MOOE)', // review with accountant
-        'saa-ifwd'                      => 'IFWD',
-        'saa-sarai cntg'                => 'SAA-SARAI cntg (MOOE)',
-        'saa-sarai co cntg'             => 'SAA-SARAI cntg (CO)',
+        'regular-onelab' => 'Regular MOOE (Onelab)',
+        'regular-emieerald' => 'Regular MOOE (Emieerald)',
+        'prior years payable' => 'Prior Year Payables',
+        'setup-non refund' => 'SETUP Non Refund',
+        'setup-non refund (s&t trngs)' => 'SETUP Non Refund',
+        'setup-pmb' => 'SETUP PMB',
+        'saa-ifwd cntg' => 'SAA-SARAI cntg (MOOE)', // review with accountant
+        'saa-ifwd' => 'IFWD',
+        'saa-sarai cntg' => 'SAA-SARAI cntg (MOOE)',
+        'saa-sarai co cntg' => 'SAA-SARAI cntg (CO)',
     ];
 
     /** Phase-1 routing: only these charging codes generate an SL tab. */
     private const SL_TABS = [
-        'regular ps'   => 'PS',
+        'regular ps' => 'PS',
         'regular mooe' => 'MOOE',
-        'gia'          => 'GIA',
+        'gia' => 'GIA',
     ];
 
     public function run(): void
@@ -58,15 +58,15 @@ class AccountReferenceSeeder extends Seeder
 
             foreach ($codes as $code) {
                 $norm = $this->norm($code);
-                $tab  = self::SL_TABS[$norm] ?? null;
+                $tab = self::SL_TABS[$norm] ?? null;
 
                 DB::table('account_references')->updateOrInsert(
                     ['ref_type' => 'charging', 'code' => $code],
                     [
                         'allotment_class' => $this->classOf($code),
-                        'is_prior_year'   => $this->isPriorYear($code),
-                        'sl_tab'          => $tab,
-                        'is_active'       => $tab !== null,   // in-scope only
+                        'is_prior_year' => $this->isPriorYear($code),
+                        'sl_tab' => $tab,
+                        'is_active' => $tab !== null,   // in-scope only
                     ]
                 );
             }
@@ -77,11 +77,11 @@ class AccountReferenceSeeder extends Seeder
                 DB::table('account_references')->updateOrInsert(
                     ['ref_type' => 'charging', 'code' => $variant],
                     [
-                        'label'           => $canonical,   // alias -> canonical
+                        'label' => $canonical,   // alias -> canonical
                         'allotment_class' => $this->classOf($canonical),
-                        'is_prior_year'   => $this->isPriorYear($canonical),
-                        'sl_tab'          => $tab,
-                        'is_active'       => $tab !== null,
+                        'is_prior_year' => $this->isPriorYear($canonical),
+                        'sl_tab' => $tab,
+                        'is_active' => $tab !== null,
                     ]
                 );
             }
@@ -111,11 +111,12 @@ class AccountReferenceSeeder extends Seeder
 
         $codes = [];
         foreach ($sheet->getRowIterator(2) as $row) {
-            $v = $sheet->getCell('A' . $row->getRowIndex())->getValue();
+            $v = $sheet->getCell('A'.$row->getRowIndex())->getValue();
             if (is_string($v) && trim($v) !== '') {
                 $codes[] = trim($v);
             }
         }
+
         return array_values(array_unique($codes));
     }
 
@@ -134,12 +135,14 @@ class AccountReferenceSeeder extends Seeder
             || str_ends_with($u, ' CO') || str_contains($u, 'MITHI CO')) {
             return 'CO';
         }
+
         return 'MOOE';
     }
 
     private function isPriorYear(string $code): bool
     {
         $u = mb_strtoupper($code);
+
         return str_contains($u, 'NYDD')
             || str_contains($u, 'PRIOR YEAR')
             || str_contains($u, 'PRIOR YEARS');

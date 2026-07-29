@@ -21,6 +21,7 @@ class ImportLedgerJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 900;
+
     public int $tries = 1;   // a failed parse should be inspected, not retried blindly
 
     public function __construct(
@@ -45,15 +46,15 @@ class ImportLedgerJob implements ShouldQueue
             );
 
             Log::info('Ledger imported', [
-                'upload_id'    => $upload->id,
-                'rows'         => $upload->row_count,
+                'upload_id' => $upload->id,
+                'rows' => $upload->row_count,
                 'transactions' => $upload->transaction_count,
             ]);
         } catch (DuplicateLedgerUploadException $e) {
             // The workbook is already imported and unchanged.
             Log::info('Ledger import skipped as duplicate', [
                 'matched_on' => $e->matchedOn,
-                'existing'   => $e->existing->id,
+                'existing' => $e->existing->id,
             ]);
         }
     }

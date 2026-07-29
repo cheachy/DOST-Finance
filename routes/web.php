@@ -6,18 +6,18 @@ use App\Http\Controllers\ImportController;
 use App\Http\Controllers\LedgerController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
- 
+
 Route::get('/', fn () => redirect('/login'));
- 
+
 Route::get('/login', fn () => Inertia::render('auth/Login'))->name('login');
 Route::post('/login', [AuthController::class, 'store']);
- 
+
 Route::middleware(['auth'])->group(function () {
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
- 
+
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/imports', [ImportController::class, 'store'])->name('imports.store');
- 
+
     // --- stubs, so the sidebar links resolve while phases 2+ are built -------
     Route::get('/ledger', [LedgerController::class, 'index'])->name('ledger');
     Route::get('/subsidiary-ledgers', fn () => Inertia::render('subsidiaryledgers/Index'))->name('subsidiary-ledgers');

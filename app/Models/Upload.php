@@ -20,9 +20,9 @@ class Upload extends Model
     protected $guarded = [];
 
     protected $casts = [
-        'is_current'      => 'boolean',
-        'header_map'      => 'array',
-        'rows_pruned_at'  => 'datetime',
+        'is_current' => 'boolean',
+        'header_map' => 'array',
+        'rows_pruned_at' => 'datetime',
         'file_deleted_at' => 'datetime',
     ];
 
