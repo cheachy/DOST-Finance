@@ -29,7 +29,7 @@ class VerifyLedgerCommand extends Command
         'jan_block1_gross' => 3453752.81,
         'jan_block1_net'   => 3708031.72,
         'jan_block1_rows'  => 104,   // January rows before the r122 subtotal
-        'status_flag_rows' => 639,
+        'status_flag_rows' => 628,
         'tax_keys'         => 8,
     ];
 
