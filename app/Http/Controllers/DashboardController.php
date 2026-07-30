@@ -17,21 +17,21 @@ class DashboardController extends Controller
 {
     public function index(): Response
     {
-        $year   = (int) date('Y');
+        $year = (int) date('Y');
         $upload = Upload::current($year);
 
         return Inertia::render('auth/Dashboard', [
             'snapshot' => $upload ? [
-                'id'                => $upload->id,
-                'original_name'     => $upload->original_name,
-                'fiscal_year'       => $upload->fiscal_year,
-                'imported_at'       => $upload->created_at?->timezone('Asia/Manila')->format('M j, Y g:i A'),
+                'id' => $upload->id,
+                'original_name' => $upload->original_name,
+                'fiscal_year' => $upload->fiscal_year,
+                'imported_at' => $upload->created_at?->timezone('Asia/Manila')->format('M j, Y g:i A'),
                 'transaction_count' => $upload->transaction_count ?? 0,
-                'months'            => $upload->months(),
+                'months' => $upload->months(),
             ] : null,
 
-            'stats'    => $this->stats($upload),
-            'alerts'   => $this->alerts($upload),
+            'stats' => $this->stats($upload),
+            'alerts' => $this->alerts($upload),
             'activity' => [],   // wired when activity_logs lands
         ]);
     }
@@ -58,9 +58,9 @@ class DashboardController extends Controller
             ->sum('gross_amount');
 
         return [
-            'allotted'    => $allotted,
-            'disbursed'   => $disbursed,
-            'balance'     => $allotted - $disbursed,
+            'allotted' => $allotted,
+            'disbursed' => $disbursed,
+            'balance' => $allotted - $disbursed,
             'utilization' => $allotted > 0 ? round($disbursed / $allotted * 100, 2) : 0,
         ];
     }
@@ -86,15 +86,15 @@ class DashboardController extends Controller
             ->whereNotNull('charging_code')
             ->whereNotExists(function ($q) {
                 $q->select('id')
-                  ->from('account_references')
-                  ->whereColumn('account_references.code', 'general_ledgers.charging_code')
-                  ->where('account_references.ref_type', 'charging');
+                    ->from('account_references')
+                    ->whereColumn('account_references.code', 'general_ledgers.charging_code')
+                    ->where('account_references.ref_type', 'charging');
             })
             ->count();
 
         return [
             'unrouted' => $unrouted,
-            'stale'    => false,
+            'stale' => false,
         ];
     }
 }
