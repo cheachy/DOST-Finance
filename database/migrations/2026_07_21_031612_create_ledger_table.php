@@ -137,9 +137,9 @@ return new class extends Migration
 
         // partial + GIN indexes need raw SQL
         DB::statement("CREATE INDEX gl_tx_idx ON general_ledgers (upload_id, charging_code) WHERE row_type = 'transaction'");
-        DB::statement("CREATE INDEX gl_paid_idx ON general_ledgers (upload_id, payment_mode) WHERE payment_mode IS NOT NULL");
-        DB::statement("CREATE INDEX gl_tax_gin ON general_ledgers USING GIN (tax_details)");
-        DB::statement("CREATE INDEX gl_extras_gin ON general_ledgers USING GIN (extras)");
+        DB::statement('CREATE INDEX gl_paid_idx ON general_ledgers (upload_id, payment_mode) WHERE payment_mode IS NOT NULL');
+        DB::statement('CREATE INDEX gl_tax_gin ON general_ledgers USING GIN (tax_details)');
+        DB::statement('CREATE INDEX gl_extras_gin ON general_ledgers USING GIN (extras)');
     }
 
     public function down(): void

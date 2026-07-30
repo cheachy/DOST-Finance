@@ -26,15 +26,15 @@ class GeneralLedger extends Model
     protected $guarded = [];
 
     protected $casts = [
-        'tax_details'        => 'array',
-        'extras'             => 'array',
-        'raw_row'            => 'array',
-        'payment_date'       => 'date',
-        'created_at'         => 'datetime',
-        'gross_amount'       => 'decimal:2',
-        'net_amount'         => 'decimal:2',
+        'tax_details' => 'array',
+        'extras' => 'array',
+        'raw_row' => 'array',
+        'payment_date' => 'date',
+        'created_at' => 'datetime',
+        'gross_amount' => 'decimal:2',
+        'net_amount' => 'decimal:2',
         'charging_breakdown' => 'decimal:2',
-        'receipts'           => 'decimal:2',
+        'receipts' => 'decimal:2',
     ];
 
     public function upload(): BelongsTo
@@ -90,7 +90,7 @@ class GeneralLedger extends Model
     public function obrNumber(): ?string
     {
         return $this->obr_prefix || $this->obr_no
-            ? trim(($this->obr_prefix ?? '') . '-' . ($this->obr_no ?? ''), '-')
+            ? trim(($this->obr_prefix ?? '').'-'.($this->obr_no ?? ''), '-')
             : null;
     }
 }

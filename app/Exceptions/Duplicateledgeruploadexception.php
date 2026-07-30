@@ -30,12 +30,12 @@ class DuplicateLedgerUploadException extends RuntimeException
     public function context(): array
     {
         return [
-            'matched_on'      => $this->matchedOn,
+            'matched_on' => $this->matchedOn,
             'existing_upload' => [
-                'id'            => $this->existing->id,
+                'id' => $this->existing->id,
                 'original_name' => $this->existing->original_name,
-                'imported_at'   => $this->existing->created_at?->toIso8601String(),
-                'row_count'     => $this->existing->row_count,
+                'imported_at' => $this->existing->created_at?->toIso8601String(),
+                'row_count' => $this->existing->row_count,
             ],
         ];
     }

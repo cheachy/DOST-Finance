@@ -2,9 +2,9 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use App\Services\LedgerImportService;
 use App\Models\User;
+use App\Services\LedgerImportService;
+use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
 
 class ImportLedger extends Command
@@ -29,38 +29,42 @@ class ImportLedger extends Command
     public function handle(LedgerImportService $importService)
     {
         $filePath = $this->argument('file');
-        if (!file_exists($filePath)) {
+        if (! file_exists($filePath)) {
             $this->error("File not found: {$filePath}");
+
             return 1;
         }
 
         $userId = $this->option('user');
         $user = User::find($userId);
-        if (!$user) {
+        if (! $user) {
             $this->error("User with ID {$userId} not found.");
+
             return 1;
         }
 
-        $this->info("Copying file into storage/app/ledger-imports...");
+        $this->info('Copying file into storage/app/ledger-imports...');
         // Ensure directory exists
-        if (!Storage::disk('local')->exists('ledger-imports')) {
+        if (! Storage::disk('local')->exists('ledger-imports')) {
             Storage::disk('local')->makeDirectory('ledger-imports');
         }
 
         // Generate a filename and copy it
-        $filename = uniqid('cmd_import_') . '.xlsx';
-        Storage::disk('local')->put('ledger-imports/' . $filename, file_get_contents($filePath));
-        $fullPath = Storage::disk('local')->path('ledger-imports/' . $filename);
+        $filename = uniqid('cmd_import_').'.xlsx';
+        Storage::disk('local')->put('ledger-imports/'.$filename, file_get_contents($filePath));
+        $fullPath = Storage::disk('local')->path('ledger-imports/'.$filename);
 
-        $this->info("Parsing file (this might take a few minutes for large files)...");
+        $this->info('Parsing file (this might take a few minutes for large files)...');
         try {
             $year = (int) ($this->option('year') ?? date('Y'));
             $import = $importService->import($fullPath, $year, basename($filePath), $user->id);
             $this->info("Import complete: {$import->row_count} rows imported (Upload #{$import->id}).");
+
             return 0;
         } catch (\Exception $e) {
-            $this->error("Import failed: " . $e->getMessage());
+            $this->error('Import failed: '.$e->getMessage());
             $this->error($e->getTraceAsString());
+
             return 1;
         }
     }
