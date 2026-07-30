@@ -4,29 +4,44 @@ namespace App\Http\Controllers;
 
 use App\Models\AccountReference;
 use App\Models\GeneralLedger;
+use App\Models\SlTab;
 use App\Models\Upload;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Read-only subsidiary ledgers (PS / MOOE / GIA).
+ * Read-only subsidiary ledgers.
  *
- * Derived from the general ledger by charging code (via account_references) —
- * never stored, regenerated on every request from the live snapshot. Same
- * scoping and pagination shape as LedgerController; ?tab= picks the SL,
- * ?month= filters it, both live in the URL.
+ * Which tabs exist comes from `sl_tabs` (see SlTab model / `ledger:sl-tab`
+ * command), NOT a hardcoded list here. Adding a 4th tab is a data operation;
+ * this controller does not need to change.
+ *
+ * Derived from the general ledger by charging code (via account_references)
+ * — never stored, regenerated on every request from the live snapshot. Same
+ * scoping/pagination shape as LedgerController; ?tab= picks the SL, ?month=
+ * filters it, both live in the URL.
  */
 class SlController extends Controller
 {
-    private const TABS = ['PS', 'MOOE', 'GIA'];
-
     public function index(Request $request): Response
     {
-        $tab = strtoupper((string) $request->string('tab'));
-        if (! in_array($tab, self::TABS, true)) {
-            $tab = self::TABS[0];
+        $tabs = SlTab::active(); // ordered by display_order, whatever tabs currently exist
+
+        if ($tabs->isEmpty()) {
+            return Inertia::render('subsidiaryledgers/Index', [
+                'hasLedger' => false,
+                'tabs' => [],
+                'tab' => null,
+                'snapshot' => null,
+                'months' => [],
+                'month' => null,
+                'rows' => null,
+            ]);
         }
+
+        $requested = strtoupper((string) $request->string('tab'));
+        $tab = $tabs->firstWhere('code', $requested)?->code ?? $tabs->first()->code;
 
         $year = (int) date('Y');
         $upload = Upload::current($year);
@@ -34,7 +49,7 @@ class SlController extends Controller
         if (! $upload) {
             return Inertia::render('subsidiaryledgers/Index', [
                 'hasLedger' => false,
-                'tabs' => self::TABS,
+                'tabs' => $tabs->map(fn ($t) => ['code' => $t->code, 'label' => $t->label])->values(),
                 'tab' => $tab,
                 'snapshot' => null,
                 'months' => [],
@@ -49,10 +64,18 @@ class SlController extends Controller
             $month = null;
         }
 
+        // Every charging code currently in account_references carries
+        // charging_code only on real transaction rows in this workbook
+        // (confirmed 2026-07-29), so this whereIn is already transaction-only
+        // by construction. transactions() is added anyway as a defensive
+        // guarantee against a FUTURE classify() regression re-populating
+        // charging_code on a non-transaction row - it should never change
+        // today's result, only prevent a future silent leak.
         $codes = AccountReference::query()->forSlTab($tab)->pluck('code');
 
         $rows = GeneralLedger::query()
             ->where('upload_id', $upload->id)
+            ->transactions()
             ->whereIn('charging_code', $codes)
             ->when($month, fn ($q) => $q->where('ledger_month', $month))
             ->orderBy('source_row')
@@ -77,7 +100,7 @@ class SlController extends Controller
 
         return Inertia::render('subsidiaryledgers/Index', [
             'hasLedger' => true,
-            'tabs' => self::TABS,
+            'tabs' => $tabs->map(fn ($t) => ['code' => $t->code, 'label' => $t->label])->values(),
             'tab' => $tab,
             'snapshot' => [
                 'original_name' => $upload->original_name,

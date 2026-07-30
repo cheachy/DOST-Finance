@@ -7,16 +7,11 @@ import "../../../css/theme.css";
 import "../../../css/dashboard.css";
 import "../../../css/ledger.css";
 
-const TAB_LABELS: Record<string, string> = {
-    PS: "Personal Services",
-    MOOE: "Maintenance & Other Operating Expenses",
-    GIA: "Grants-in-Aid",
-};
+type SlTab = { code: string; label: string };
 
 export default function Index() {
     const page = usePage().props as any;
-    const { auth, hasLedger, snapshot, tabs, tab, months, month, rows } =
-        page;
+    const { auth, hasLedger, snapshot, tabs, tab, months, month, rows } = page;
     if (!auth?.user) return null;
 
     const paginator: Paginator<LedgerRow> | null = rows;
@@ -35,9 +30,7 @@ export default function Index() {
 
             <header className="dash-topbar">
                 <div>
-                    <h1 className="dash-topbar__title">
-                        Subsidiary ledgers
-                    </h1>
+                    <h1 className="dash-topbar__title">Subsidiary Ledgers</h1>
                     <p className="dash-topbar__sub">
                         {hasLedger
                             ? `${snapshot.original_name} · generated from the general ledger, read-only`
@@ -63,15 +56,15 @@ export default function Index() {
                             role="tablist"
                             aria-label="Select subsidiary ledger"
                         >
-                            {tabs.map((t: string) => (
+                            {tabs.map((t: SlTab) => (
                                 <button
-                                    key={t}
+                                    key={t.code}
                                     type="button"
-                                    className={`month-chip${tab === t ? " is-active" : ""}`}
-                                    onClick={() => goTab(t)}
-                                    title={TAB_LABELS[t] ?? t}
+                                    className={`month-chip${tab === t.code ? " is-active" : ""}`}
+                                    onClick={() => goTab(t.code)}
+                                    title={t.label}
                                 >
-                                    {t}
+                                    {t.code}
                                 </button>
                             ))}
                         </div>

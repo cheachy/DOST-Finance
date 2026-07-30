@@ -23,7 +23,7 @@ class VerifyLedgerCommand extends Command
 
     /** Reference figures from the validated CY2026 parse (7 months, Jan-Jul). */
     private const REF = [
-        'rows'           => 2376,
+        'rows' => 2376,
         // 2026-07-29 FINAL: was 2130 -> 2136 -> 2141. Two real bugs in
         // classify(), both found via unexpected undercounts and fixed with
         // evidence, not guesses:
@@ -38,15 +38,15 @@ class VerifyLedgerCommand extends Command
         //      genuine subtotal rather than a transaction).
         // Confirmed via ledger:audit: row-type census sums to exactly 2376
         // (2141+175+23+21+9+7), so every physical row is accounted for.
-        'transactions'   => 2141,
-        'months'         => 7,
+        'transactions' => 2141,
+        'months' => 7,
         'jan_block1_gross' => 3453752.81,
-        'jan_block1_net'   => 3708031.72,
-        'jan_block1_rows'  => 104,   // January rows before the r122 subtotal
+        'jan_block1_net' => 3708031.72,
+        'jan_block1_rows' => 104,   // January rows before the r122 subtotal
         // 2026-07-29 FINAL: 628 -> 632 -> 634, tracking the transaction-count
         // fix above (status_flag is only computed for row_type=transaction).
         'status_flag_rows' => 634,
-        'tax_keys'         => 8,
+        'tax_keys' => 8,
     ];
 
     public function handle(): int
@@ -56,15 +56,16 @@ class VerifyLedgerCommand extends Command
         $upload = Upload::current($year);
         if (! $upload) {
             $this->error("No current snapshot for FY{$year}. Import a workbook first.");
+
             return self::FAILURE;
         }
 
         $this->info("Snapshot #{$upload->id} — {$upload->original_name}");
-        $this->line('  imported: ' . $upload->created_at?->toDateTimeString());
+        $this->line('  imported: '.$upload->created_at?->toDateTimeString());
         $this->newLine();
 
         $rows = GeneralLedger::where('upload_id', $upload->id);
-        $tx   = (clone $rows)->transactions();
+        $tx = (clone $rows)->transactions();
 
         $checks = [];
 
@@ -94,7 +95,7 @@ class VerifyLedgerCommand extends Command
         $checks[] = $this->check('tax_details keys', count($keys), self::REF['tax_keys']);
 
         $this->newLine();
-        $this->line('discovered tax columns: ' . implode(', ', array_keys($keys)));
+        $this->line('discovered tax columns: '.implode(', ', array_keys($keys)));
 
         // things that should be zero
         $unknown = (clone $rows)->where('row_type', 'unknown')->count();
@@ -103,13 +104,14 @@ class VerifyLedgerCommand extends Command
         // reversion note), none are transactions. 9 is the confirmed baseline
         // for THIS workbook; a different count on a future import is worth a
         // fresh look via ledger:audit, but isn't a failure on its own.
-        $this->line("unknown rows: {$unknown}" . ($unknown > 9 ? '  <- more than the audited baseline, check ledger:audit' : ''));
+        $this->line("unknown rows: {$unknown}".($unknown > 9 ? '  <- more than the audited baseline, check ledger:audit' : ''));
 
         $this->newLine();
         $failed = count(array_filter($checks, fn ($ok) => ! $ok));
 
         if ($failed === 0) {
             $this->info('All checks passed — the PHP importer matches the reference parse.');
+
             return self::SUCCESS;
         }
 

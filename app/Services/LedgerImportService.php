@@ -9,6 +9,7 @@ use App\Services\Ledger\LedgerHeaderAnalyzer;
 use App\Services\Ledger\LedgerLegendAnalyzer;
 use App\Services\Ledger\LedgerRetentionManager;
 use App\Services\Ledger\LedgerRowParser;
+use Database\Seeders\AccountReferenceSeeder;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
@@ -99,6 +100,19 @@ class LedgerImportService
             });
 
             $this->retentionManager->applyRetention($upload);
+
+            // Auto-refresh account_references from this workbook's own Ref
+            // sheet, every import - no manual `db:seed` step to remember.
+            // Safe to run unconditionally: AccountReferenceSeeder only ever
+            // refreshes FACTS on every run and sets sl_tab/is_active ONCE per
+            // code, so this can never undo a scaling decision made through
+            // `ledger:sl-tab`. A failure here (e.g. a malformed Ref sheet)
+            // is logged but does not fail an otherwise-successful import.
+            try {
+                app(AccountReferenceSeeder::class)->run();
+            } catch (\Throwable $e) {
+                report($e);
+            }
         } catch (DuplicateLedgerUploadException $e) {
             throw $e;
         } catch (\Throwable $e) {

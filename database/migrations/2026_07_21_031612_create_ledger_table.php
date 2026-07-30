@@ -63,6 +63,22 @@ return new class extends Migration
         });
 
         // ---- lookup codes for CHARGING and RC (seeded from the Ref sheet) ---
+        Schema::create('sl_tabs', function (Blueprint $t) {
+            // The registry of subsidiary-ledger tabs. Adding a 4th tab (e.g.
+            // ONELAB) is a DATA operation from here on - insert a row, no code
+            // change, no deploy. See App\Console\Commands\SlTabCommand.
+            $t->string('code')->primary();      // 'PS', 'MOOE', 'GIA', ...
+            $t->string('label');                // display name
+            $t->unsignedSmallInteger('display_order')->default(0);
+            $t->boolean('is_active')->default(true);
+        });
+
+        DB::table('sl_tabs')->insert([
+            ['code' => 'PS',   'label' => 'PS',   'display_order' => 1, 'is_active' => true],
+            ['code' => 'MOOE', 'label' => 'MOOE', 'display_order' => 2, 'is_active' => true],
+            ['code' => 'GIA',  'label' => 'GIA',  'display_order' => 3, 'is_active' => true],
+        ]);
+
         Schema::create('account_references', function (Blueprint $t) {
             $t->id();
             $t->string('ref_type');                    // 'charging' | 'rc'
@@ -72,6 +88,14 @@ return new class extends Migration
             $t->string('sl_tab')->nullable();          // which SL tab this routes to
             $t->boolean('is_prior_year')->default(false); // current vs prior year allotment
             $t->boolean('is_active')->default(true);
+            // When set, this row is an ALIAS: a typo'd/inconsistent charging-
+            // code string actually seen in the ledger (e.g. "Regular-Onelab")
+            // that means the SAME fund as the canonical code named here (e.g.
+            // "Regular MOOE (Onelab)"). Its allotment_class/sl_tab/is_active/
+            // is_prior_year are always refreshed to MATCH the canonical row -
+            // aliases never carry an independent scope decision. Managed via
+            // `php artisan ledger:alias`, never a hardcoded PHP list.
+            $t->string('canonical_code')->nullable();
             $t->unique(['ref_type', 'code']);
         });
 
@@ -146,6 +170,7 @@ return new class extends Migration
     {
         Schema::dropIfExists('general_ledgers');
         Schema::dropIfExists('account_references');
+        Schema::dropIfExists('sl_tabs');
         Schema::dropIfExists('uploads');
     }
 };

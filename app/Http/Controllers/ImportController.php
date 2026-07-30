@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\DuplicateLedgerUploadException;
 use App\Services\LedgerImportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -32,6 +33,12 @@ class ImportController extends Controller
                 $originalName,
                 $request->user()->id
             );
+        } catch (DuplicateLedgerUploadException $e) {
+            // Nothing references this file — the duplicate check happens
+            // before (or the Upload row gets deleted after) it's written.
+            @unlink($fullPath);
+
+            return back()->withErrors(['file' => $e->getMessage()]);
         } catch (\RuntimeException $e) {
             // A sheet couldn't be safely parsed (missing required
             // columns) — surface this clearly rather than a generic 500.

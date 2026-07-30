@@ -16,50 +16,50 @@
  * All keys are "normalized": lower-cased, trimmed, whitespace collapsed.
  */
 return [
-    'sheet'           => 'MDS 101',
+    'sheet' => 'MDS 101',
     'header_scan_max' => 40,   // how many top rows to scan for the header band
     'blank_run_limit' => 80,   // stop after this many consecutive blank rows
- 
+
     // every one of these labels must appear on a row for it to be the header row
     'anchors' => ['obr #', 'payee', 'charging', 'rc', 'particulars'],
- 
+
     'months' => [
         'january' => 1, 'february' => 2, 'march' => 3, 'april' => 4,
         'may' => 5, 'june' => 6, 'july' => 7, 'august' => 8,
         'september' => 9, 'october' => 10, 'november' => 11, 'december' => 12,
     ],
- 
+
     // whole super-group blocks to skip (POSTING = processing dates/times)
     'ignore_super' => ['posting'],
- 
+
     'header' => [
         // matched on the MAIN header label -> canonical field
         'by_main' => [
-            'obr #'              => 'obr_prefix',
-            'payee'              => 'payee',
-            'charging'           => 'charging',
-            'rc'                 => 'rc',
-            'particulars'        => 'particulars',
+            'obr #' => 'obr_prefix',
+            'payee' => 'payee',
+            'charging' => 'charging',
+            'rc' => 'rc',
+            'particulars' => 'particulars',
             'charging breakdown' => 'charging_breakdown',
-            'gross'              => 'gross',
-            'net'                => 'net',
-            'receipts'           => 'receipts',
-            'acct codes'         => 'acct_code',
-            'jev #'              => 'jev_no',
-            'remarks'            => 'remarks',
-            'date'               => 'pay_date',      // POSTING dates ignored above
-            'rod'                => 'payment_mode',  // ROD A/C - gates the ROD block
+            'gross' => 'gross',
+            'net' => 'net',
+            'receipts' => 'receipts',
+            'acct codes' => 'acct_code',
+            'jev #' => 'jev_no',
+            'remarks' => 'remarks',
+            'date' => 'pay_date',      // POSTING dates ignored above
+            'rod' => 'payment_mode',  // ROD A/C - gates the ROD block
         ],
- 
+
         // the only fixed field inside the deduction block is the status flag
-        'status_sub_label'    => 'w',
+        'status_sub_label' => 'w',
         'status_allowed_main' => ['', 'vat', 'wtx'],
- 
+
         // split columns
-        'dv_main'        => 'dv#',        // two merged cols -> dv_prefix, dv_no
+        'dv_main' => 'dv#',        // two merged cols -> dv_prefix, dv_no
         'obr_split_from' => 'obr_prefix', // obr_no = the column right after OBR #
     ],
- 
+
     /*
      | Deduction / tax block (dynamic).
      |
@@ -77,14 +77,14 @@ return [
      */
     'tax_block' => [
         'start_after' => 'particulars',
-        'end_labels'  => ['total deductions'],
+        'end_labels' => ['total deductions'],
         'skip_labels' => ['w', 'checking', 'total'],
         // a sub label beginning with "/" continues its main label
         'join_continuation' => true,
         // group labels that should never become a key on their own
         'group_labels' => ['vat', 'wtx'],
     ],
- 
+
     /*
      | Status legend (dynamic).
      |
@@ -108,7 +108,7 @@ return [
         // columns probed to read a data row's fill, first match wins
         'probe_columns' => ['payee', 'charging', 'rc', 'particulars', 'obr_prefix'],
     ],
- 
+
     /*
      | Classification & routing rules — CONFIRMED by the accountant (interview).
      |
@@ -118,20 +118,20 @@ return [
      */
     'classify' => [
         // current-year class from the charging code
-        'ps_codes'      => ['regular ps'],      // exact (normalized) match -> PS
-        'co_contains'   => 'co',                // charging containing 'co' -> CO
+        'ps_codes' => ['regular ps'],      // exact (normalized) match -> PS
+        'co_contains' => 'co',                // charging containing 'co' -> CO
         // everything else current-year -> MOOE
- 
+
         // prior-year gate: these charging codes mean prior-year allotment
         'prior_year_codes' => ['prior year payables', 'prior years payable', '2025 nydd'],
- 
+
         // Prior-year PS/MOOE/CO is NOT auto-derived. The accountant confirmed
         // there is no rule; she annotates the particulars manually. So prior-year
         // rows route to the prior-year bucket WITHOUT a class split - flag them
         // for her rather than guessing.
         'prior_year_class' => 'manual',
     ],
- 
+
     /*
      | Remittance detection.
      | A numeric value in the RC column is the reliable signal (RC should hold a
@@ -141,9 +141,9 @@ return [
      */
     'remittance' => [
         'detect_on_numeric_rc' => true,
-        'keyword_hints'        => ['to remit', 'remit', 'rem of', 'rem '],
+        'keyword_hints' => ['to remit', 'remit', 'rem of', 'rem '],
     ],
- 
+
     /*
      | Status notes written into the RC column (they overwrite whatever code was
      | there). "PD ON 3/26" = paid-on stamp added AFTER the fact to the original
@@ -163,10 +163,10 @@ return [
      */
     'reissuance_marker' => 'reissuance',   // matched at the start of particulars
     'rc_status_notes' => [
-        'paid'      => '/^\s*(pd|ap)\s*(on)?\s*\d/i',   // PD ON 3/26, AP ON 5/26, PD 7/26
+        'paid' => '/^\s*(pd|ap)\s*(on)?\s*\d/i',   // PD ON 3/26, AP ON 5/26, PD 7/26
         'cancelled' => '/cancelled/i',
     ],
- 
+
     /*
      | GIA program split (CEST / LGIA / SSCP).
      | The program is the FIRST token of the RC value (after an optional 'GIA-'
@@ -178,7 +178,7 @@ return [
      | cannot be resolved.
      */
     'gia_programs' => ['CEST', 'LGIA', 'SSCP'],
- 
+
     /*
      | Charging-code normalisation. "Regular MOOE (Emieerald)" and
      | "Regular-EMIEERALD" are the same fund; the parenthesised name is the
@@ -187,30 +187,30 @@ return [
      */
     'charging_aliases' => [
         // canonical => [variants...]  (extend from the Ref sheet)
-        'Regular MOOE (Onelab)'    => ['regular-onelab', 'regular mooe (onelab)'],
+        'Regular MOOE (Onelab)' => ['regular-onelab', 'regular mooe (onelab)'],
         'Regular MOOE (Emieerald)' => ['regular-emieerald', 'regular mooe (emieerald)'],
-        'Prior Year Payables'      => ['prior years payable', 'prior year payables'],
+        'Prior Year Payables' => ['prior years payable', 'prior year payables'],
     ],
- 
+
     // canonical fields extracted per row, in order (remarks + payment_mode last)
     'fields' => [
         'obr_prefix', 'obr_no', 'payee', 'charging', 'rc', 'particulars', 'status',
         'charging_breakdown', 'gross', 'net', 'pay_date', 'dv_prefix', 'dv_no',
         'receipts', 'acct_code', 'jev_no', 'remarks', 'payment_mode',
     ],
- 
+
     // canonical parser field -> general_ledgers column (unlisted map 1:1)
     'column_map' => [
         'charging' => 'charging_code',
-        'rc'       => 'rc_code',
-        'gross'    => 'gross_amount',
-        'net'      => 'net_amount',
+        'rc' => 'rc_code',
+        'gross' => 'gross_amount',
+        'net' => 'net_amount',
         'pay_date' => 'payment_date',
     ],
- 
+
     // fields holding Excel date serials, converted to Y-m-d
     'date_fields' => ['pay_date'],
- 
+
     // row-classification markers (matched against payee + particulars + rod)
     /*
      | Markers used by classify() as substring matches against the PAYEE cell
@@ -230,9 +230,9 @@ return [
      */
     'markers' => [
         'subtotal' => ['TOTAL', 'PS TAX', 'PS ACCTG', 'PS BUDGET', 'ACCOUNTING', 'BUDGET'],
-        'section'  => ['OBLIGATION', 'BECAME DD', 'BECOME DD', 'PRIOR MONTHS', 'NYDD', 'CANCELLED', 'REVERSION'],
+        'section' => ['OBLIGATION', 'BECAME DD', 'BECOME DD', 'PRIOR MONTHS', 'NYDD', 'CANCELLED', 'REVERSION'],
     ],
- 
+
     /*
      | Retention.
      |
@@ -251,8 +251,8 @@ return [
      | that preserves the government format. Superseded files have no such use.
      */
     'keep_row_snapshots' => 2,   // snapshots that retain their general_ledgers rows
-    'keep_files'         => 1,   // workbook files kept on disk (0 = delete after parse)
- 
+    'keep_files' => 1,   // workbook files kept on disk (0 = delete after parse)
+
     /*
      | raw_row stores the full original row per record. It roughly triples the
      | stored payload (~1.1 MB vs ~0.5 MB per snapshot) and duplicates data

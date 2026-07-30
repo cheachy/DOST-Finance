@@ -24,6 +24,7 @@ use Illuminate\Console\Command;
 class AuditLedgerCommand extends Command
 {
     protected $signature = 'ledger:audit {--year=2026}';
+
     protected $description = 'Surface every non-transaction / unclassified row for review';
 
     public function handle(): int
@@ -31,6 +32,7 @@ class AuditLedgerCommand extends Command
         $upload = Upload::current((int) $this->option('year'));
         if (! $upload) {
             $this->error('No current snapshot.');
+
             return self::FAILURE;
         }
 
@@ -89,8 +91,8 @@ class AuditLedgerCommand extends Command
             }
             $this->line("Data range: source_row {$min}–{$max}, {$total} stored.");
             if ($gaps) {
-                $this->line(count($gaps) . ' row(s) absent (skipped as blank): '
-                    . $this->compactRanges($gaps));
+                $this->line(count($gaps).' row(s) absent (skipped as blank): '
+                    .$this->compactRanges($gaps));
                 $this->line('If a transaction you expect is in that list, it was mis-skipped — investigate.');
             } else {
                 $this->info('No gaps — every source_row in range is stored.');
