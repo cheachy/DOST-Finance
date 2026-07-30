@@ -19,6 +19,7 @@ interface MonthSelectorProps {
     months: number[]; // months present in the snapshot (1-12)
     active: number | null; // null = all / year-to-date
     basePath: string; // e.g. '/ledger'
+    extraParams?: Record<string, string | number>; // other URL state to preserve, e.g. { tab: 'PS' }
 }
 
 /**
@@ -30,13 +31,18 @@ export default function MonthSelector({
     months,
     active,
     basePath,
+    extraParams = {},
 }: MonthSelectorProps) {
     function go(month: number | null) {
-        router.get(basePath, month ? { month } : {}, {
-            preserveState: true,
-            preserveScroll: true,
-            replace: true,
-        });
+        router.get(
+            basePath,
+            month ? { ...extraParams, month } : { ...extraParams },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+            },
+        );
     }
 
     return (

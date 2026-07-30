@@ -104,7 +104,7 @@ export default function AppLayout({ user, current, children }: AppLayoutProps) {
                             {user.name}
                         </span>
                         <span className="app-sidebar__user-role">
-                            {user.role ?? "FAD-Accounting"}
+                            {user.role}
                         </span>
                     </span>
                 </div>

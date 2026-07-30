@@ -4,6 +4,7 @@ import MonthSelector from "../../components/MonthSelector";
 import "../../../css/theme.css";
 import "../../../css/dashboard.css";
 import "../../../css/ledger.css";
+import LiveMeta from "../../components/LiveMeta";
 
 interface Row {
     source_row: number;
@@ -63,12 +64,16 @@ export default function Index() {
 
             <header className="dash-topbar">
                 <div>
-                    <h1 className="dash-topbar__title">General ledger</h1>
+                    <h1 className="dash-topbar__title">General Ledger</h1>
                     <p className="dash-topbar__sub">
                         {hasLedger
                             ? `${snapshot.original_name} · ${snapshot.transaction_count.toLocaleString()} transactions`
                             : "No ledger imported yet."}
                     </p>
+                </div>
+                <div className="dash-topbar__meta">
+                    <span>Butuan City, PH</span>
+                    <LiveMeta />
                 </div>
             </header>
 

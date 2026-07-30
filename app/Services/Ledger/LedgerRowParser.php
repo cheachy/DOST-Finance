@@ -122,13 +122,29 @@ class LedgerRowParser
             || $this->isNum($this->get($row, 'net'))
             || $this->isNum($this->get($row, 'charging_breakdown'));
 
-        $blob = mb_strtoupper(implode(' ', array_map(
-            fn ($k) => (string) $this->get($row, $k),
-            ['payee', 'particulars', 'payment_mode']
-        )));
+        // Marker matching prefers PAYEE, falling back to PARTICULARS only when
+        // payee is blank.
+        //
+        // Every confirmed subtotal/header row either carries its label in
+        // payee with particulars blank (e.g. payee="ACCOUNTING"), OR has no
+        // payee at all and the label sits in particulars instead (e.g.
+        // payee=null, particulars="TOTAL TRA..."). Genuine transactions
+        // always have a real payee - so scanning particulars ONLY when payee
+        // is empty catches real header/subtotal rows without reopening the
+        // false-positive problem: every false positive found so far (source_
+        // row 343, 954, 1601, 1960) had a real, non-blank payee, so the
+        // fallback never engages for them.
+        //
+        // Do not widen this to "payee + particulars, always" - that is what
+        // caused the original bug (ordinary transaction narrative containing
+        // TOTAL/BUDGET/etc got scanned and false-matched).
+        $particulars = $this->get($row, 'particulars');
+        $blob = mb_strtoupper((string) ($this->isStr($payee) ? $payee : $particulars));
 
+        // an identity = payee, particulars, a charge code, or a payment mode.
+        // column-total rows carry amounts but NO identity.
         $hasIdentity = $this->isStr($payee)
-            || $this->isStr($this->get($row, 'particulars'))
+            || $this->isStr($particulars)
             || $this->isStr($charging)
             || in_array($mode, ['A', 'C'], true);
 
