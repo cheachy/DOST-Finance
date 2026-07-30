@@ -23,7 +23,39 @@
   position: sticky;
   top: 0;
   height: 100vh;
+  transition: width .18s ease, padding .18s ease;
 }
+
+.app-sidebar__toggle {
+  position: absolute;
+  top: 20px;
+  right: -12px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #16233d;
+  border: 1px solid #1b2536;
+  color: #9aa4b2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  z-index: 5;
+  transition: background-color .15s, color .15s;
+}
+.app-sidebar__toggle:hover { background: #131c2e; color: #fff; }
+.app-sidebar__toggle svg { transition: transform .2s ease; }
+
+.app-sidebar.is-collapsed { width: 64px; padding: 16px 8px; }
+.app-sidebar.is-collapsed .app-sidebar__toggle svg { transform: rotate(180deg); }
+.app-sidebar.is-collapsed .app-sidebar__brand-text,
+.app-sidebar.is-collapsed .app-sidebar__user-text,
+.app-sidebar.is-collapsed .app-nav__item span,
+.app-sidebar.is-collapsed .app-sidebar__logout span,
+.app-sidebar.is-collapsed .app-sidebar__copy { display: none; }
+.app-sidebar.is-collapsed .app-nav__item,
+.app-sidebar.is-collapsed .app-sidebar__logout { justify-content: center; padding: 11px 0; }
 
 .app-sidebar__brand { display: flex; align-items: center; gap: 10px; padding: 4px 6px 14px; }
 .app-sidebar__mark {

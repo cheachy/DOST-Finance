@@ -1,6 +1,9 @@
 import { Link } from "@inertiajs/react";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import DostLogo from "../components/DostLogo";
+import { ChevronLeftIcon, LogoutIcon, NavIcon } from "../components/SidebarIcons";
+
+const SIDEBAR_COLLAPSED_KEY = "app-sidebar-collapsed";
 
 interface AppLayoutProps {
     user: { name: string; email?: string; role?: string };
@@ -22,69 +25,33 @@ const NAV = [
     { key: "logs", label: "Activity log", href: "/logs", icon: "clock" },
 ] as const;
 
-const stroke = {
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 1.7,
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-};
-
-function NavIcon({ name }: { name: string }) {
-    const paths: Record<string, ReactNode> = {
-        grid: (
-            <>
-                <rect x="3" y="3" width="7" height="7" rx="1.5" />
-                <rect x="14" y="3" width="7" height="7" rx="1.5" />
-                <rect x="3" y="14" width="7" height="7" rx="1.5" />
-                <rect x="14" y="14" width="7" height="7" rx="1.5" />
-            </>
-        ),
-        book: (
-            <>
-                <path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H19v16H5.5A1.5 1.5 0 0 0 4 20.5Z" />
-                <path d="M8 7h7M8 11h7" />
-            </>
-        ),
-        layers: (
-            <>
-                <path d="m12 3 8 4.5-8 4.5-8-4.5Z" />
-                <path d="m4 12 8 4.5 8-4.5" />
-                <path d="m4 16.5 8 4.5 8-4.5" />
-            </>
-        ),
-        report: (
-            <>
-                <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" />
-                <path d="M14 3v5h5M9 13h6M9 17h4" />
-            </>
-        ),
-        clock: (
-            <>
-                <circle cx="12" cy="12" r="9" />
-                <path d="M12 7v5l3 2" />
-            </>
-        ),
-    };
-    return (
-        <svg
-            viewBox="0 0 24 24"
-            width="17"
-            height="17"
-            {...stroke}
-            aria-hidden="true"
-        >
-            {paths[name]}
-        </svg>
-    );
-}
-
 export default function AppLayout({ user, current, children }: AppLayoutProps) {
     const initial = user.name?.trim().charAt(0).toUpperCase() || "?";
+    const [collapsed, setCollapsed] = useState(
+        () => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1",
+    );
+
+    useEffect(() => {
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? "1" : "0");
+    }, [collapsed]);
 
     return (
         <div className="app-shell">
-            <aside className="app-sidebar">
+            <aside
+                className={`app-sidebar${collapsed ? " is-collapsed" : ""}`}
+            >
+                <button
+                    type="button"
+                    className="app-sidebar__toggle"
+                    onClick={() => setCollapsed((c) => !c)}
+                    aria-label={
+                        collapsed ? "Expand sidebar" : "Collapse sidebar"
+                    }
+                    title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                >
+                    <ChevronLeftIcon />
+                </button>
+
                 <div className="app-sidebar__brand">
                     <span className="app-sidebar__mark">
                         <DostLogo size={22} showText={false} />
@@ -115,6 +82,7 @@ export default function AppLayout({ user, current, children }: AppLayoutProps) {
                             key={item.key}
                             href={item.href}
                             className={`app-nav__item${current === item.key ? " is-active" : ""}`}
+                            title={item.label}
                         >
                             <NavIcon name={item.icon} />
                             <span>{item.label}</span>
@@ -128,17 +96,9 @@ export default function AppLayout({ user, current, children }: AppLayoutProps) {
                         method="post"
                         as="button"
                         className="app-sidebar__logout"
+                        title="Log out"
                     >
-                        <svg
-                            viewBox="0 0 24 24"
-                            width="16"
-                            height="16"
-                            {...stroke}
-                            aria-hidden="true"
-                        >
-                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                            <path d="m16 17 5-5-5-5M21 12H9" />
-                        </svg>
+                        <LogoutIcon />
                         <span>Log out</span>
                     </Link>
                     <p className="app-sidebar__copy">

@@ -3,7 +3,6 @@ import { useRef, useState, ChangeEvent, DragEvent } from "react";
 import AppLayout from "../../layouts/AppLayout";
 import "../../../css/theme.css";
 import "../../../css/dashboard.css";
-import LiveDate from "../../components/LiveMeta";
 import LiveMeta from "../../components/LiveMeta";
 
 interface Snapshot {
