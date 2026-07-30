@@ -1,8 +1,11 @@
 import { Head, usePage, router } from "@inertiajs/react";
 import { useRef, useState, ChangeEvent, DragEvent } from "react";
 import AppLayout from "../../layouts/AppLayout";
+import MonthSelector from "../../components/MonthSelector";
+import MonthlyTrendChart from "../../components/MonthlyTrendChart";
 import "../../../css/theme.css";
 import "../../../css/dashboard.css";
+import "../../../css/ledger.css";
 import LiveMeta from "../../components/LiveMeta";
 
 interface Snapshot {
@@ -21,6 +24,12 @@ interface Stats {
     utilization: number;
 }
 
+interface MonthTrendPoint {
+    month: number;
+    allotted: number;
+    disbursed: number;
+}
+
 interface Activity {
     id: number;
     title: string;
@@ -33,7 +42,7 @@ interface Alerts {
     stale: boolean;
 }
 
-const MONTHS = [
+const MONTH_NAMES = [
     "Jan",
     "Feb",
     "Mar",
@@ -60,12 +69,14 @@ export default function Dashboard() {
 
     // all optional — the page renders correctly before the backend supplies them
     const snapshot: Snapshot | null = page.snapshot ?? null;
+    const month: number | null = page.month ?? null;
     const stats: Stats = page.stats ?? {
         allotted: 0,
         disbursed: 0,
         balance: 0,
         utilization: 0,
     };
+    const monthlyTrend: MonthTrendPoint[] = page.monthlyTrend ?? [];
     const activity: Activity[] = page.activity ?? [];
     const alerts: Alerts = page.alerts ?? { unrouted: 0, stale: false };
 
@@ -107,6 +118,9 @@ export default function Dashboard() {
     if (!auth?.user) return null;
 
     const hasLedger = Boolean(snapshot);
+    const latestMonth = snapshot?.months.length
+        ? Math.max(...snapshot.months)
+        : null;
     const importError = errors?.file || errors?.year || errors?.upload;
 
     return (
@@ -263,43 +277,59 @@ export default function Dashboard() {
                     </article>
                 </div>
 
-                {/* ---- coverage + activity ---- */}
+                {/* ---- coverage + trend + activity ---- */}
                 <div className="dash-columns">
-                    <section className="dash-card">
-                        <div className="dash-card__head">
-                            <h2>Month coverage</h2>
-                            <span className="dash-card__note">
-                                {hasLedger
-                                    ? `${snapshot!.months.length} of 12 months`
-                                    : "Awaiting import"}
-                            </span>
-                        </div>
-
-                        {hasLedger ? (
-                            <ul className="dash-months">
-                                {MONTHS.map((m, i) => {
-                                    const present = snapshot!.months.includes(
-                                        i + 1,
-                                    );
-                                    return (
-                                        <li
-                                            key={m}
-                                            className={`dash-month${present ? " is-present" : ""}`}
-                                        >
-                                            {m}
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        ) : (
-                            <div className="dash-empty">
-                                <p>
-                                    Import a workbook to see which months are
-                                    covered.
-                                </p>
+                    <div className="dash-columns__left">
+                        <section className="dash-card dash-card--compact">
+                            <div className="dash-card__head">
+                                <h2>Month coverage</h2>
+                                <span className="dash-card__note">
+                                    {hasLedger
+                                        ? month
+                                            ? `As of ${MONTH_NAMES[month - 1]}`
+                                            : latestMonth
+                                              ? `As of ${MONTH_NAMES[latestMonth - 1]}`
+                                              : ""
+                                        : "Awaiting import"}
+                                </span>
                             </div>
-                        )}
-                    </section>
+
+                            {hasLedger ? (
+                                <MonthSelector
+                                    months={snapshot!.months}
+                                    active={month}
+                                    basePath="/dashboard"
+                                    variant="grid"
+                                />
+                            ) : (
+                                <div className="dash-empty">
+                                    <p>
+                                        Import a workbook to see which months
+                                        are covered.
+                                    </p>
+                                </div>
+                            )}
+                        </section>
+
+                        <section className="dash-card dash-chart-card">
+                            <div className="dash-card__head">
+                                <h2>Monthly Allotment vs Disbursement</h2>
+                                <span className="dash-card__note">
+                                    Awaiting import
+                                </span>
+                            </div>
+                            {hasLedger && monthlyTrend.length > 0 ? (
+                                <MonthlyTrendChart data={monthlyTrend} />
+                            ) : (
+                                <div className="dash-empty">
+                                    <p>
+                                        Import a workbook to see the monthly
+                                        trend.
+                                    </p>
+                                </div>
+                            )}
+                        </section>
+                    </div>
 
                     <section className="dash-card">
                         <div className="dash-card__head">

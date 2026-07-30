@@ -4,6 +4,13 @@
   --dost-cyan: #00c2ff;
   --dost-hover: #000000;     /* button hover collapses to black */
 
+  /* Chart series colors. dost-blue itself is too dark to pass the OKLCH
+     lightness band (L 0.396 vs a 0.43 floor) for data marks, so charts use
+     this lighter, validated sibling instead of the UI-chrome blue. Pair
+     validated via dataviz skill's validate_palette.js: all checks pass. */
+  --chart-allotted: #0f52cc;
+  --chart-disbursed: #00c2ff;
+
   --aslr-ink: #0b1220;
   --aslr-text: #111827;
   --aslr-muted: #6b7280;

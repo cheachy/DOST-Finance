@@ -20,6 +20,7 @@ interface MonthSelectorProps {
     active: number | null; // null = all / year-to-date
     basePath: string; // e.g. '/ledger'
     extraParams?: Record<string, string | number>; // other URL state to preserve, e.g. { tab: 'PS' }
+    variant?: "chip" | "grid"; // "chip" = pill row (default), "grid" = boxed dashboard style
 }
 
 /**
@@ -32,6 +33,7 @@ export default function MonthSelector({
     active,
     basePath,
     extraParams = {},
+    variant = "chip",
 }: MonthSelectorProps) {
     function go(month: number | null) {
         router.get(
@@ -45,15 +47,15 @@ export default function MonthSelector({
         );
     }
 
+    const isGrid = variant === "grid";
+    const containerClass = isGrid ? "dash-months" : "month-selector";
+    const itemClass = isGrid ? "dash-month" : "month-chip";
+
     return (
-        <div
-            className="month-selector"
-            role="tablist"
-            aria-label="Select month"
-        >
+        <div className={containerClass} role="tablist" aria-label="Select month">
             <button
                 type="button"
-                className={`month-chip${active === null ? " is-active" : ""}`}
+                className={`${itemClass}${isGrid ? " is-present" : ""}${active === null ? " is-active" : ""}`}
                 onClick={() => go(null)}
             >
                 All
@@ -65,7 +67,7 @@ export default function MonthSelector({
                     <button
                         key={name}
                         type="button"
-                        className={`month-chip${active === m ? " is-active" : ""}`}
+                        className={`${itemClass}${present ? " is-present" : ""}${active === m ? " is-active" : ""}`}
                         disabled={!present}
                         onClick={() => present && go(m)}
                         title={present ? undefined : "No data for this month"}

@@ -16,60 +16,62 @@ export default function LedgerTable({
     return (
         <>
             <div className="ledger-scroll">
-                <table className="ledger-table">
-                    <thead>
-                        <tr>
-                            <th className="num">Row</th>
-                            <th>OBR</th>
-                            <th>Payee</th>
-                            <th>Charging</th>
-                            <th>RC</th>
-                            <th>Particulars</th>
-                            <th>W</th>
-                            <th className="num">Gross</th>
-                            <th className="num">Net</th>
-                            <th>DV</th>
-                            <th>A/C</th>
-                            <th>Date</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {paginator?.data.map((r) => (
-                            <tr
-                                key={r.source_row}
-                                className={rowClassName(r)}
-                                title={r.status_flag ?? undefined}
-                            >
-                                <td className="num muted">{r.source_row}</td>
-                                <td>{r.obr}</td>
-                                <td className="ellip">{r.payee}</td>
-                                <td>{r.charging}</td>
-                                <td>{r.rc}</td>
-                                <td className="ellip">{r.particulars}</td>
-                                <td>{r.status}</td>
-                                <td className="num">{peso(r.gross)}</td>
-                                <td className="num">{peso(r.net)}</td>
-                                <td className="ellip">{r.dv}</td>
-                                <td className="center">{r.payment_mode}</td>
-                                <td className="muted">{r.pay_date}</td>
-                            </tr>
-                        ))}
-                        {emptyMessage && paginator?.data.length === 0 && (
+                <div className="ledger-scroll__inner">
+                    <table className="ledger-table">
+                        <thead>
                             <tr>
-                                <td
-                                    colSpan={12}
-                                    className="muted"
-                                    style={{
-                                        textAlign: "center",
-                                        padding: "24px",
-                                    }}
-                                >
-                                    {emptyMessage}
-                                </td>
+                                <th className="num">Row</th>
+                                <th>OBR</th>
+                                <th>Payee</th>
+                                <th>Charging</th>
+                                <th>RC</th>
+                                <th>Particulars</th>
+                                <th>W</th>
+                                <th className="num">Gross</th>
+                                <th className="num">Net</th>
+                                <th>DV</th>
+                                <th>A/C</th>
+                                <th>Date</th>
                             </tr>
-                        )}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {paginator?.data.map((r) => (
+                                <tr
+                                    key={r.source_row}
+                                    className={rowClassName(r)}
+                                    title={r.status_flag ?? undefined}
+                                >
+                                    <td className="num muted">{r.source_row}</td>
+                                    <td>{r.obr}</td>
+                                    <td className="ellip">{r.payee}</td>
+                                    <td>{r.charging}</td>
+                                    <td>{r.rc}</td>
+                                    <td className="ellip">{r.particulars}</td>
+                                    <td>{r.status}</td>
+                                    <td className="num">{peso(r.gross)}</td>
+                                    <td className="num">{peso(r.net)}</td>
+                                    <td className="ellip">{r.dv}</td>
+                                    <td className="center">{r.payment_mode}</td>
+                                    <td className="muted">{r.pay_date}</td>
+                                </tr>
+                            ))}
+                            {emptyMessage && paginator?.data.length === 0 && (
+                                <tr>
+                                    <td
+                                        colSpan={12}
+                                        className="muted"
+                                        style={{
+                                            textAlign: "center",
+                                            padding: "24px",
+                                        }}
+                                    >
+                                        {emptyMessage}
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             {paginator && (

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\GeneralLedger;
 use App\Models\Upload;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -15,28 +16,42 @@ use Inertia\Response;
  */
 class DashboardController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
-        $year = (int) date('Y');
+        $year   = (int) date('Y');
         $upload = Upload::current($year);
+        $months = $upload?->months() ?? [];
+
+        // Selecting a month scopes the headline figures to AS OF THAT MONTH
+        // (cumulative Jan-through-month), matching the AS-OF-{MONTH} block
+        // in the workbook's own SL summaries. Confirmed 2026-07-30: this
+        // genuinely changes the numbers, it isn't cosmetic - the month
+        // chips must actually reload the page. See stats() for why both
+        // sides of the calculation must be cumulative together.
+        $month = $request->integer('month') ?: null;
+        if ($month !== null && ! in_array($month, $months, true)) {
+            $month = null;
+        }
 
         return Inertia::render('auth/Dashboard', [
             'snapshot' => $upload ? [
-                'id' => $upload->id,
-                'original_name' => $upload->original_name,
-                'fiscal_year' => $upload->fiscal_year,
-                'imported_at' => $upload->created_at?->timezone('Asia/Manila')->format('M j, Y g:i A'),
+                'id'                => $upload->id,
+                'original_name'     => $upload->original_name,
+                'fiscal_year'       => $upload->fiscal_year,
+                'imported_at'       => $upload->created_at?->format('M j, Y g:i A'),
                 'transaction_count' => $upload->transaction_count ?? 0,
-                'months' => $upload->months(),
+                'months'            => $months,
             ] : null,
 
-            'stats' => $this->stats($upload),
-            'alerts' => $this->alerts($upload),
-            'activity' => [],   // wired when activity_logs lands
+            'month'        => $month,
+            'stats'        => $this->stats($upload, $month),
+            'monthlyTrend' => $this->monthlyTrend($upload),
+            'alerts'       => $this->alerts($upload),
+            'activity'     => [],   // wired when activity_logs lands
         ]);
     }
 
-    private function stats(?Upload $upload): array
+    private function stats(?Upload $upload, ?int $month): array
     {
         $empty = ['allotted' => 0, 'disbursed' => 0, 'balance' => 0, 'utilization' => 0];
 
@@ -44,25 +59,71 @@ class DashboardController extends Controller
             return $empty;
         }
 
-        $base = GeneralLedger::where('upload_id', $upload->id);
+        // Balance and utilization are "AS OF {MONTH}" figures, same as her
+        // own SL summaries - cumulative allotted and cumulative disbursed
+        // through the same month, never a mix of one cumulative and one
+        // monthly side. "All" is just AS OF December, not a separate case.
+        // Confirmed 2026-07-30: mixing cumulative allotted with month-only
+        // disbursed produced nonsense in both directions - March showed
+        // 164% utilization (a whole month's spend charged against only
+        // that month's receipts), July showed a huge phantom balance
+        // (cumulative receipts minus only July's spend, ignoring six
+        // months of real spending in between).
+        $asOfMonth = $month ?? 12;
+
+        $scoped = GeneralLedger::where('upload_id', $upload->id)
+            ->where('ledger_month', '<=', $asOfMonth);
 
         // Allotment comes from the NCA / receipts rows, not from transactions.
-        $allotted = (float) (clone $base)
+        $allotted = (float) (clone $scoped)
             ->where('row_type', 'allotment_header')
             ->sum('receipts');
 
-        // Disbursed = paid transactions only. A/C is the gate.
-        $disbursed = (float) (clone $base)
+        // Disbursed = NET, not gross. Gross includes withholding tax that
+        // never actually leaves DOST's account via ADA/check - NET is what
+        // was genuinely paid out. Confirmed 2026-07-30 (was gross_amount).
+        $disbursed = (float) (clone $scoped)
             ->transactions()
             ->disbursed()
-            ->sum('gross_amount');
+            ->sum('net_amount');
 
         return [
-            'allotted' => $allotted,
-            'disbursed' => $disbursed,
-            'balance' => $allotted - $disbursed,
+            'allotted'    => $allotted,
+            'disbursed'   => $disbursed,
+            'balance'     => $allotted - $disbursed,
             'utilization' => $allotted > 0 ? round($disbursed / $allotted * 100, 2) : 0,
         ];
+    }
+
+    /**
+     * Per-month figures for the trend chart - the plain {MONTH} block, not
+     * the cumulative AS-OF-{MONTH} one used by stats(). Two grouped queries
+     * instead of 24 scoped ones.
+     */
+    private function monthlyTrend(?Upload $upload): array
+    {
+        if (! $upload || ! $upload->hasRows()) {
+            return [];
+        }
+
+        $allottedByMonth = GeneralLedger::where('upload_id', $upload->id)
+            ->where('row_type', 'allotment_header')
+            ->selectRaw('ledger_month, SUM(receipts) as total')
+            ->groupBy('ledger_month')
+            ->pluck('total', 'ledger_month');
+
+        $disbursedByMonth = GeneralLedger::where('upload_id', $upload->id)
+            ->transactions()
+            ->disbursed()
+            ->selectRaw('ledger_month, SUM(net_amount) as total')
+            ->groupBy('ledger_month')
+            ->pluck('total', 'ledger_month');
+
+        return collect(range(1, 12))->map(fn ($m) => [
+            'month'     => $m,
+            'allotted'  => (float) ($allottedByMonth[$m] ?? 0),
+            'disbursed' => (float) ($disbursedByMonth[$m] ?? 0),
+        ])->all();
     }
 
     /**
@@ -86,15 +147,15 @@ class DashboardController extends Controller
             ->whereNotNull('charging_code')
             ->whereNotExists(function ($q) {
                 $q->select('id')
-                    ->from('account_references')
-                    ->whereColumn('account_references.code', 'general_ledgers.charging_code')
-                    ->where('account_references.ref_type', 'charging');
+                  ->from('account_references')
+                  ->whereColumn('account_references.code', 'general_ledgers.charging_code')
+                  ->where('account_references.ref_type', 'charging');
             })
             ->count();
 
         return [
             'unrouted' => $unrouted,
-            'stale' => false,
+            'stale'    => false,
         ];
     }
 }
