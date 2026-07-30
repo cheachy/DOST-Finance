@@ -18,7 +18,7 @@ export default function Index() {
 
     return (
         <AppLayout user={auth.user} current="ledger">
-            <Head title="General ledger" />
+            <Head title="General Ledger" />
 
             <header className="dash-topbar">
                 <div>
