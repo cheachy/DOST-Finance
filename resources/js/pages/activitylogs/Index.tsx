@@ -64,12 +64,8 @@ export default function Index() {
                                     <hr className="dash-activity-divider" />
                                     <ul className="dash-activity">
                                         {dateEvents.map((e) => (
-                                            <li key={e.id}>
-                                                <span
-                                                    className={`dash-activity__dot dash-activity__dot--${e.level}`}
-                                                    aria-hidden="true"
-                                                />
-                                                <span>
+                                            <li key={e.id} className={`dash-activity__ticket dash-activity__ticket--${e.level}`}>
+                                                <div className="dash-activity__ticket-content">
                                                     <span className="dash-activity__title">
                                                         {e.title}
                                                     </span>
@@ -78,10 +74,12 @@ export default function Index() {
                                                             {e.description}
                                                         </span>
                                                     )}
+                                                </div>
+                                                <div className="dash-activity__ticket-meta">
                                                     <span className="dash-activity__at">
                                                         {e.time}
                                                     </span>
-                                                </span>
+                                                </div>
                                             </li>
                                         ))}
                                     </ul>

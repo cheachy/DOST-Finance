@@ -34,8 +34,9 @@ class AuthController extends Controller
         // Match the credentials
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
+            $user = Auth::user();
 
-            ActivityLog::record('login', 'info', 'Signed in', null, Auth::id());
+            ActivityLog::record('login', 'info', 'Signed in', "{$user->name} ({$user->email})", $user->id);
 
             return redirect()->intended('/dashboard');
         }
@@ -51,6 +52,9 @@ class AuthController extends Controller
      */
     public function destroy(Request $request)
     {
+        $user = Auth::user();
+        ActivityLog::record('logout', 'info', 'Signed out', "{$user->name} ({$user->email})", $user->id);
+
         Auth::logout();
 
         $request->session()->invalidate();

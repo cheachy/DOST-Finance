@@ -1,5 +1,5 @@
-import { Head, usePage, router } from "@inertiajs/react";
-import { useRef, useState, ChangeEvent, DragEvent } from "react";
+import { Head, Link, usePage, router } from "@inertiajs/react";
+import { useRef, useState, useEffect, ChangeEvent, DragEvent } from "react";
 import AppLayout from "../../layouts/AppLayout";
 import MonthSelector from "../../components/MonthSelector";
 import MonthlyTrendChart from "../../components/MonthlyTrendChart";
@@ -32,6 +32,7 @@ interface MonthTrendPoint {
 
 interface Activity {
     id: number;
+    level: "success" | "info" | "error";
     title: string;
     detail: string;
     at: string;
@@ -83,6 +84,31 @@ export default function Dashboard() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [processing, setProcessing] = useState(false);
     const [dragging, setDragging] = useState(false);
+
+    const activityListRef = useRef<HTMLUListElement>(null);
+    const [visibleActivityCount, setVisibleActivityCount] = useState(activity.length);
+
+    useEffect(() => {
+        const measure = () => {
+            if (!activityListRef.current) return;
+            const containerHeight = activityListRef.current.clientHeight;
+            const firstTicket = activityListRef.current.firstElementChild;
+            if (!firstTicket) return;
+            const ticketHeight = firstTicket.getBoundingClientRect().height;
+            if (ticketHeight === 0) return;
+            const gap = 12;
+            const count = Math.max(1, Math.floor((containerHeight + gap) / (ticketHeight + gap)));
+            setVisibleActivityCount(Math.min(count, activity.length));
+        };
+
+        const el = activityListRef.current;
+        if (!el) return;
+
+        const observer = new ResizeObserver(() => measure());
+        observer.observe(el);
+
+        return () => observer.disconnect();
+    }, [activity]);
 
     function upload(file: File, reset?: () => void) {
         setProcessing(true);
@@ -335,30 +361,33 @@ export default function Dashboard() {
                         </section>
                     </div>
 
-                    <section className="dash-card">
+                    <section className="dash-card dash-card--recent">
                         <div className="dash-card__head">
                             <h2>Recent activity</h2>
+                            <Link href="/logs" className="dash-card__link">
+                                View all
+                            </Link>
                         </div>
 
                         {activity.length > 0 ? (
-                            <ul className="dash-activity">
-                                {activity.map((a) => (
-                                    <li key={a.id}>
-                                        <span
-                                            className="dash-activity__dot"
-                                            aria-hidden="true"
-                                        />
-                                        <span>
+                            <ul className="dash-activity" ref={activityListRef}>
+                                {activity.slice(0, visibleActivityCount).map((a) => (
+                                    <li key={a.id} className={`dash-activity__ticket dash-activity__ticket--${a.level || 'info'}`}>
+                                        <div className="dash-activity__ticket-content">
                                             <span className="dash-activity__title">
                                                 {a.title}
                                             </span>
-                                            <span className="dash-activity__detail">
-                                                {a.detail}
-                                            </span>
+                                            {a.detail && (
+                                                <span className="dash-activity__detail">
+                                                    {a.detail}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="dash-activity__ticket-meta">
                                             <span className="dash-activity__at">
                                                 {a.at}
                                             </span>
-                                        </span>
+                                        </div>
                                     </li>
                                 ))}
                             </ul>

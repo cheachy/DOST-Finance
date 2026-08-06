@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\GeneralLedger;
 use App\Models\Upload;
 use Illuminate\Http\Request;
@@ -47,8 +48,27 @@ class DashboardController extends Controller
             'stats'        => $this->stats($upload, $month),
             'monthlyTrend' => $this->monthlyTrend($upload),
             'alerts'       => $this->alerts($upload),
-            'activity'     => [],   // wired when activity_logs lands
+            'activity'     => $this->activity(),
         ]);
+    }
+
+    /**
+     * Newest five events off the same append-only trail as the full
+     * /logs page - imports, sign-ins, exports.
+     */
+    private function activity(): array
+    {
+        return ActivityLog::orderByDesc('created_at')
+            ->limit(12)
+            ->get()
+            ->map(fn (ActivityLog $log) => [
+                'id'     => $log->id,
+                'level'  => $log->level,
+                'title'  => $log->title,
+                'detail' => $log->description ?? '',
+                'at'     => $log->created_at?->diffForHumans(),
+            ])
+            ->all();
     }
 
     private function stats(?Upload $upload, ?int $month): array
