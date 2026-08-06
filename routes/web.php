@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ImportController;
@@ -23,5 +24,5 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/ledger', [LedgerController::class, 'index'])->name('ledger');
     Route::get('/subsidiary-ledgers', [SlController::class, 'index'])->name('subsidiary-ledgers');
     Route::get('/reports', fn () => Inertia::render('reports/Index'))->name('reports');
-    Route::get('/logs', fn () => Inertia::render('activitylogs/Index'))->name('logs');
+    Route::get('/logs', [ActivityLogController::class, 'index'])->name('logs');
 });

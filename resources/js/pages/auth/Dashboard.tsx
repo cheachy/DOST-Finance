@@ -315,7 +315,11 @@ export default function Dashboard() {
                             <div className="dash-card__head">
                                 <h2>Monthly Allotment vs Disbursement</h2>
                                 <span className="dash-card__note">
-                                    Awaiting import
+                                    {hasLedger
+                                        ? latestMonth
+                                            ? `As of ${MONTH_NAMES[latestMonth - 1]}`
+                                            : ""
+                                        : "Awaiting import"}
                                 </span>
                             </div>
                             {hasLedger && monthlyTrend.length > 0 ? (

@@ -1,27 +1,26 @@
 :root {
-  --dost-blue: #0038a8;      /* official DOST royal blue */
-  --dost-blue-ink: #002a80;
-  --dost-cyan: #00c2ff;
-  --dost-hover: #000000;     /* button hover collapses to black */
+    --dost-blue: #0038a8; /* official DOST royal blue */
+    --dost-blue-ink: #002a80;
+    --dost-cyan: #00c2ff;
+    --dost-hover: #000000;
+    --chart-allotted: #0f52cc;
+    --chart-disbursed: #00c2ff;
 
-  /* Chart series colors. dost-blue itself is too dark to pass the OKLCH
-     lightness band (L 0.396 vs a 0.43 floor) for data marks, so charts use
-     this lighter, validated sibling instead of the UI-chrome blue. Pair
-     validated via dataviz skill's validate_palette.js: all checks pass. */
-  --chart-allotted: #0f52cc;
-  --chart-disbursed: #00c2ff;
+    --aslr-ink: #0b1220;
+    --aslr-text: #111827;
+    --aslr-muted: #6b7280;
+    --aslr-faint: #9ca3af;
+    --aslr-border: #e5e7eb;
+    --aslr-surface: #ffffff;
 
-  --aslr-ink: #0b1220;
-  --aslr-text: #111827;
-  --aslr-muted: #6b7280;
-  --aslr-faint: #9ca3af;
-  --aslr-border: #e5e7eb;
-  --aslr-surface: #ffffff;
+    --aslr-danger-bg: #fef2f2;
+    --aslr-danger-bd: #fee2e2;
+    --aslr-danger-fg: #dc2626;
 
-  --aslr-danger-bg: #fef2f2;
-  --aslr-danger-bd: #fee2e2;
-  --aslr-danger-fg: #dc2626;
+    --aslr-success-fg: #16a34a;
+    --aslr-info-fg: var(--dost-blue);
 
-  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+    --font-sans:
+        "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
 }

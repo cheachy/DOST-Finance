@@ -18,15 +18,13 @@ const NAMES = [
 interface MonthSelectorProps {
     months: number[]; // months present in the snapshot (1-12)
     active: number | null; // null = all / year-to-date
-    basePath: string; // e.g. '/ledger'
+    basePath: string;
     extraParams?: Record<string, string | number>; // other URL state to preserve, e.g. { tab: 'PS' }
     variant?: "chip" | "grid"; // "chip" = pill row (default), "grid" = boxed dashboard style
 }
 
-/**
- * URL-driven period selector. Selection lives in ?month= so views are
- * shareable, survive refresh, and keep the back button meaningful. An Inertia
- * partial reload keeps scroll position and only refetches the page's data.
+/*
+    URL-driven period selector.
  */
 export default function MonthSelector({
     months,
@@ -51,31 +49,41 @@ export default function MonthSelector({
     const containerClass = isGrid ? "dash-months" : "month-selector";
     const itemClass = isGrid ? "dash-month" : "month-chip";
 
-    return (
-        <div className={containerClass} role="tablist" aria-label="Select month">
+    const allButton = (
+        <button
+            type="button"
+            className={`${itemClass}${isGrid ? " is-present" : ""}${active === null ? " is-active" : ""}`}
+            onClick={() => go(null)}
+        >
+            All
+        </button>
+    );
+
+    const monthButtons = NAMES.map((name, i) => {
+        const m = i + 1;
+        const present = months.includes(m);
+        return (
             <button
+                key={name}
                 type="button"
-                className={`${itemClass}${isGrid ? " is-present" : ""}${active === null ? " is-active" : ""}`}
-                onClick={() => go(null)}
+                className={`${itemClass}${present ? " is-present" : ""}${active === m ? " is-active" : ""}`}
+                disabled={!present}
+                onClick={() => present && go(m)}
+                title={present ? undefined : "No data for this month"}
             >
-                All
+                {name}
             </button>
-            {NAMES.map((name, i) => {
-                const m = i + 1;
-                const present = months.includes(m);
-                return (
-                    <button
-                        key={name}
-                        type="button"
-                        className={`${itemClass}${present ? " is-present" : ""}${active === m ? " is-active" : ""}`}
-                        disabled={!present}
-                        onClick={() => present && go(m)}
-                        title={present ? undefined : "No data for this month"}
-                    >
-                        {name}
-                    </button>
-                );
-            })}
+        );
+    });
+
+    return (
+        <div
+            className={containerClass}
+            role="tablist"
+            aria-label="Select month"
+        >
+            {allButton}
+            {monthButtons}
         </div>
     );
 }

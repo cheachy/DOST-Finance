@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Exceptions\DuplicateLedgerUploadException;
+use App\Models\ActivityLog;
 use App\Models\GeneralLedger;
 use App\Models\Upload;
 use App\Services\Ledger\LedgerHeaderAnalyzer;
@@ -101,6 +102,14 @@ class LedgerImportService
 
             $this->retentionManager->applyRetention($upload);
 
+            ActivityLog::record(
+                'import',
+                'success',
+                'Ledger imported',
+                "{$originalName} — {$transactions} transactions",
+                $uploadedBy
+            );
+
             // Auto-refresh account_references from this workbook's own Ref
             // sheet, every import - no manual `db:seed` step to remember.
             // Safe to run unconditionally: AccountReferenceSeeder only ever
@@ -117,6 +126,15 @@ class LedgerImportService
             throw $e;
         } catch (\Throwable $e) {
             $upload->update(['status' => 'failed', 'failure_reason' => $e->getMessage()]);
+
+            ActivityLog::record(
+                'import',
+                'error',
+                'Import failed',
+                "{$originalName} — {$e->getMessage()}",
+                $uploadedBy
+            );
+
             throw $e;
         }
 

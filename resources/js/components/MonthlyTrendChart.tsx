@@ -25,8 +25,6 @@ const NAMES = [
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
-const CHART_HEIGHT = 230;
-
 const peso = (n: number) =>
     new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(n || 0);
 
@@ -60,7 +58,7 @@ export default function MonthlyTrendChart({ data }: MonthlyTrendChartProps) {
     const [showTable, setShowTable] = useState(false);
 
     return (
-        <div>
+        <div className="dash-chart-body">
             <div className="chart-legend">
                 <span className="chart-legend__item">
                     <span className="chart-legend__swatch chart-legend__swatch--allotted" />
@@ -81,27 +79,29 @@ export default function MonthlyTrendChart({ data }: MonthlyTrendChartProps) {
             </div>
 
             {showTable ? (
-                <table className="chart-table">
-                    <thead>
-                        <tr>
-                            <th>Month</th>
-                            <th>Allotted</th>
-                            <th>Disbursed</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {data.map((d) => (
-                            <tr key={d.month}>
-                                <td>{NAMES[d.month - 1]}</td>
-                                <td>{peso(d.allotted)}</td>
-                                <td>{peso(d.disbursed)}</td>
+                <div className="chart-table-wrap">
+                    <table className="chart-table">
+                        <thead>
+                            <tr>
+                                <th>Month</th>
+                                <th>Allotted</th>
+                                <th>Disbursed</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {data.map((d) => (
+                                <tr key={d.month}>
+                                    <td>{NAMES[d.month - 1]}</td>
+                                    <td>{peso(d.allotted)}</td>
+                                    <td>{peso(d.disbursed)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             ) : (
                 <div className="chart-svg-wrap">
-                    <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+                    <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={data} barGap={2} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
                             <CartesianGrid vertical={false} stroke="var(--aslr-border)" />
                             <XAxis

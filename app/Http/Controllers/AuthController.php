@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -33,6 +34,8 @@ class AuthController extends Controller
         // Match the credentials
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
+
+            ActivityLog::record('login', 'info', 'Signed in', null, Auth::id());
 
             return redirect()->intended('/dashboard');
         }
