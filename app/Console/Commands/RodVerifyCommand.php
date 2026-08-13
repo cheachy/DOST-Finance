@@ -128,13 +128,34 @@ class RodVerifyCommand extends Command
     /** Print the anomaly buckets, so a FAIL always says which rows caused it. */
     private function reportAnomalies(int $uploadId): void
     {
-        ['unrouted' => $unrouted, 'reclassed' => $reclassed] = $this->anomalies($uploadId);
+        [
+            'unbacked' => $unbacked,
+            'unrouted' => $unrouted,
+            'reclassed' => $reclassed,
+        ] = $this->anomalies($uploadId);
 
         $fmt = fn (array $typed) => implode(' + ', array_map(
             fn ($v, $k) => $k . ' ' . number_format($v, 2),
             $typed,
             array_keys($typed)
         ));
+
+        if ($unbacked) {
+            $this->warn(count($unbacked) . ' row(s) with a ROD figure but NO disbursement behind it (open question B7):');
+            foreach ($unbacked as [$r, $typed]) {
+                $this->line(sprintf(
+                    '   row %-5s M%-2d she typed %-22s net+rc 0.00   returned %13s   %s',
+                    $r->source_row, $r->ledger_month, $fmt($typed),
+                    number_format((float) $r->receipts, 2),
+                    $r->status_flag ? '['.$r->status_flag.']' : ''
+                ));
+            }
+            $this->line('   A cancelled payment whose money came back, then was reissued. Her ROD');
+            $this->line('   still counts it, and it is also counted in the month it was first paid.');
+            $this->line('   Whether the later month nets it off, or the original month reverses, is');
+            $this->line('   hers to decide - do NOT net these off by guessing.');
+            $this->newLine();
+        }
 
         if ($unrouted) {
             $this->warn(count($unrouted) . ' row(s) with NO charging code, split by hand (open question A4):');
@@ -194,6 +215,7 @@ class RodVerifyCommand extends Command
             ->where('is_prior_year', false)
             ->pluck('allotment_class', 'code');
 
+        $unbacked = [];
         $unrouted = [];
         $reclassed = [];
 
@@ -202,7 +224,10 @@ class RodVerifyCommand extends Command
             ->disbursed()
             ->currentYearAllotment()
             ->orderBy('source_row')
-            ->get(['source_row', 'ledger_month', 'charging_code', 'particulars', 'net_amount', 'extras', 'rod_actual']);
+            ->get([
+                'source_row', 'ledger_month', 'charging_code', 'particulars',
+                'net_amount', 'receipts', 'status_flag', 'extras', 'rod_actual',
+            ]);
 
         foreach ($rows as $r) {
             $typed = [];
@@ -211,6 +236,17 @@ class RodVerifyCommand extends Command
                 if (abs($v) > 0.01) {
                     $typed[$label] = $v;
                 }
+            }
+
+            // A ROD figure on a row that disbursed nothing (net + numeric RC
+            // both zero). The money came back: a cancelled cheque refunded in
+            // a later month, its return sitting in RECEIPTS. Her ROD still
+            // carries the amount, so generated and actual cannot agree until
+            // B7 says which side should move.
+            if ($typed && abs($r->rodAmount()) < 0.01) {
+                $unbacked[] = [$r, $typed];
+
+                continue;
             }
 
             if (trim((string) $r->charging_code) === '') {
@@ -227,7 +263,7 @@ class RodVerifyCommand extends Command
             }
         }
 
-        return compact('unrouted', 'reclassed');
+        return compact('unbacked', 'unrouted', 'reclassed');
     }
 
     /**

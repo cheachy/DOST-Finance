@@ -18,6 +18,16 @@ use Illuminate\Support\Facades\DB;
  * AccountReferenceSeeder keeps the mirrored fields in sync forever after.
  * There is no PHP array of known aliases; this command IS the source of
  * truth, same as `ledger:sl-tab` is for tab scope.
+ *
+ * STILL REQUIRED after auto-registration (2026-08-13). AccountReferenceSeeder
+ * ::syncObserved() now registers every ledger-observed charging code and
+ * derives its ALLOTMENT CLASS by rule, so the ROD no longer depends on anyone
+ * running this command. That covers class only. It leaves each variant as its
+ * own canonical row, which means TAB IDENTITY is still unasserted: "Green
+ * Wave" and "SAA-Green Wave" are both MOOE, and nothing yet says whether they
+ * are one fund or two. This command is how that gets said, and it must be run
+ * for every code that shares a fund with an existing one before SL generation
+ * is trusted. Auto-registration POSTPONED this work; it did not remove it.
  */
 class AliasCommand extends Command
 {

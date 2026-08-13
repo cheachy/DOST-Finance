@@ -36,16 +36,31 @@ class VerifyLedgerCommand extends Command
         //      falling back to particulars only when payee is blank (+4 rows,
         //      -1 net vs a naive count, since one recovered row landed as a
         //      genuine subtotal rather than a transaction).
-        // Confirmed via ledger:audit: row-type census sums to exactly 2376
-        // (2141+175+23+21+9+7), so every physical row is accounted for.
-        'transactions' => 2141,
+        // 2026-08-13: 2141 -> 2142. A third classify() bug, same shape as the
+        // two above (a rule that was too eager, found via a number that came
+        // out wrong rather than by inspection). A numeric RECEIPTS value was
+        // enough on its own to call a row an allotment header, so source_row
+        // 1777 - a cancelled-and-refunded payment carrying OBR 04-0762, DV
+        // 04-677 and mode C - was booked as an NCA release, putting its
+        // 26,900.00 refund into TOTAL FUNDS ALLOTTED. Now a numeric RECEIPTS
+        // value only means "allotment header" on a row with no obligation
+        // behind it. Verified against all 21 headers before the change: the
+        // predicate moves exactly one row (the other 20 are NCA/NTA releases
+        // with no OBR, no DV, no A/C).
+        // Confirmed via ledger:audit: row-type census still sums to exactly
+        // 2376 (2142+175+23+20+9+7), so every physical row is accounted for.
+        'transactions' => 2142,
         'months' => 7,
         'jan_block1_gross' => 3453752.81,
         'jan_block1_net' => 3708031.72,
         'jan_block1_rows' => 104,   // January rows before the r122 subtotal
-        // 2026-07-29 FINAL: 628 -> 632 -> 634, tracking the transaction-count
-        // fix above (status_flag is only computed for row_type=transaction).
-        'status_flag_rows' => 634,
+        // 2026-07-29: 628 -> 632 -> 634, tracking the transaction-count fixes
+        // above (status_flag is only computed for row_type=transaction).
+        // 2026-08-13: 634 -> 635. Row 1777 became a transaction, so its legend
+        // fill is now resolved - and it reads CANCELLED, which is exactly what
+        // a cancelled-then-reissued payment should carry. That the flag agrees
+        // with the reclassification is corroboration, not a coincidence.
+        'status_flag_rows' => 635,
         'tax_keys' => 8,
     ];
 

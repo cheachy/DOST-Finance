@@ -109,11 +109,34 @@ class AccountReferenceSeeder extends Seeder
      * string itself. So next year's brand-new code classifies correctly on
      * import with no code change, no migration and no alias to remember.
      *
-     * What is NOT derived is sl_tab: which subsidiary ledger a fund belongs to
-     * is a scope decision, so these land unrouted and inactive, flagged
-     * source='ledger' for the dashboard to put in front of her. Confirm one by
-     * pointing it at its real code (`ledger:alias add`, which makes it an alias
-     * and inherits the tab) or by giving it a tab (`ledger:sl-tab`).
+     * SCOPE - READ THIS BEFORE BUILDING SL GENERATION.
+     *
+     * This method automates CLASS-ROUTING ONLY. It does NOT make aliases
+     * obsolete and it does NOT establish TAB IDENTITY.
+     *
+     * Registering "Green Wave" asserts one thing: it is MOOE. It does NOT
+     * assert that it is a DIFFERENT FUND from Ref's "SAA-Green Wave" - only
+     * that nobody has said they are the same. Two codes sharing an allotment
+     * class are not thereby the same subsidiary ledger. So each of the 14 is
+     * registered as its own canonical row, and if any of them is really a
+     * variant of an existing fund, SL generation would put it on a second tab
+     * (or on none) rather than merging it into the fund it belongs to.
+     *
+     * That is harmless TODAY only because every row created here has
+     * sl_tab = null and is_active = false, so nothing routes yet. It stops
+     * being harmless the moment SL routing turns on.
+     *
+     * ledger:rod-verify passing proves the CLASS is right. It tests nothing
+     * about tab identity - do not read a green ROD as evidence that these
+     * codes are correctly separated or correctly merged.
+     *
+     * So: canonical_code and `ledger:alias` are POSTPONED, NOT RETIRED. They
+     * remain the tab-identity mechanism. Once she confirms tabs (interview #2),
+     * every code here that shares a fund with an existing one must be linked
+     * with `ledger:alias add "<code>" "<canonical>"`, which converts this
+     * auto-row into an alias and inherits the canonical's tab. Giving a code a
+     * tab of its own (`ledger:sl-tab`) is the other valid answer. Until one of
+     * those happens the code stays flagged source='ledger' on the dashboard.
      *
      * Only TRANSACTION rows are scanned. Subtotal rows carry a number in the
      * charging column (that is how the parser recognises them) and header rows

@@ -114,7 +114,26 @@ class LedgerRowParser
             return 'blank';
         }
 
-        if ($this->isNum($this->get($row, 'receipts'))) {
+        // A number in RECEIPTS normally means an NCA/NTA release - money coming
+        // IN, which is what an allotment header records.
+        //
+        // Unless the row is also a disbursement. 2026-08-13: source_row 1777
+        // carries OBR 04-0762, DV 04-677, payment mode C, a payee, a charging
+        // code and her own ROD entry - it is a payment whose check was
+        // cancelled, the money returned in May (hence the RECEIPTS value) and
+        // then reissued on row 1778. Classifying it as an allotment header put
+        // that 26,900.00 refund into TOTAL FUNDS ALLOTTED, as though the
+        // department had been granted more budget.
+        //
+        // A real allotment header has NO obligation behind it: all 20 genuine
+        // ones in CY2026 are payee "NCA-..."/"NTA ..." with no OBR, no DV and
+        // no A/C. Verified by scanning all 21 - this predicate moves exactly
+        // one row, so it cannot silently reshuffle the census.
+        //
+        // NOTE this makes the row a transaction; it does NOT decide how the
+        // refund should hit the ROD. That is open question B7 (cancelled /
+        // reissued pairs) and is still hers to answer.
+        if ($this->isNum($this->get($row, 'receipts')) && ! $this->hasDisbursementIdentity($row)) {
             return 'allotment_header';
         }
 
@@ -230,6 +249,41 @@ class LedgerRowParser
             : [];
 
         return $rec;
+    }
+
+    /**
+     * An OBR number AND a DV number AND an A/C payment mode, together.
+     *
+     * All three, because any one alone is too weak: plenty of legitimate
+     * non-transaction rows carry one. Together they describe a specific
+     * obligation paid by a specific voucher through a specific instrument,
+     * which no NCA/NTA release ever has.
+     *
+     * Mirrors GeneralLedger::obrNumber()/dvNumber(), which treat the prefix
+     * and the number as two halves of one identifier - either half present is
+     * enough for that half to count.
+     */
+    protected function hasDisbursementIdentity(array $row): bool
+    {
+        $mode = $this->get($row, 'payment_mode');
+        $mode = is_string($mode) ? trim($mode) : $mode;
+
+        if (! in_array($mode, ['A', 'C'], true)) {
+            return false;
+        }
+
+        $hasObr = $this->present($row, 'obr_prefix') || $this->present($row, 'obr_no');
+        $hasDv = $this->present($row, 'dv_prefix') || $this->present($row, 'dv_no');
+
+        return $hasObr && $hasDv;
+    }
+
+    /** A field that is neither null nor whitespace, whatever its type. */
+    protected function present(array $row, string $field): bool
+    {
+        $v = $this->get($row, $field);
+
+        return $v !== null && trim((string) $v) !== '';
     }
 
     protected function matchesAny(string $haystack, array $needles): bool
