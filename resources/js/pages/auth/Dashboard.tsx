@@ -39,7 +39,9 @@ interface Activity {
 }
 
 interface Alerts {
-    unrouted: number;
+    /** Transactions on a charging code the Ref sheet does not list, so the
+     *  seeder classified it by rule and nobody has confirmed it yet. */
+    unreviewed: number;
     stale: boolean;
 }
 
@@ -79,14 +81,16 @@ export default function Dashboard() {
     };
     const monthlyTrend: MonthTrendPoint[] = page.monthlyTrend ?? [];
     const activity: Activity[] = page.activity ?? [];
-    const alerts: Alerts = page.alerts ?? { unrouted: 0, stale: false };
+    const alerts: Alerts = page.alerts ?? { unreviewed: 0, stale: false };
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [processing, setProcessing] = useState(false);
     const [dragging, setDragging] = useState(false);
 
     const activityListRef = useRef<HTMLUListElement>(null);
-    const [visibleActivityCount, setVisibleActivityCount] = useState(activity.length);
+    const [visibleActivityCount, setVisibleActivityCount] = useState(
+        activity.length,
+    );
 
     useEffect(() => {
         const measure = () => {
@@ -97,7 +101,10 @@ export default function Dashboard() {
             const ticketHeight = firstTicket.getBoundingClientRect().height;
             if (ticketHeight === 0) return;
             const gap = 12;
-            const count = Math.max(1, Math.floor((containerHeight + gap) / (ticketHeight + gap)));
+            const count = Math.max(
+                1,
+                Math.floor((containerHeight + gap) / (ticketHeight + gap)),
+            );
             setVisibleActivityCount(Math.min(count, activity.length));
         };
 
@@ -175,12 +182,14 @@ export default function Dashboard() {
                     <p className="dash-flash dash-flash--err">{importError}</p>
                 )}
 
-                {alerts.unrouted > 0 && (
+                {alerts.unreviewed > 0 && (
                     <p className="dash-flash dash-flash--warn">
-                        {alerts.unrouted} transaction
-                        {alerts.unrouted === 1 ? "" : "s"} could not be routed
-                        to a subsidiary ledger. Review the charging codes before
-                        generating reports.
+                        {alerts.unreviewed} transaction
+                        {alerts.unreviewed === 1 ? "" : "s"} use charging codes
+                        that are not in the Ref sheet. Their allotment class was
+                        derived automatically and they are counted in the totals
+                        above — confirm the codes to route them to a subsidiary
+                        ledger.
                     </p>
                 )}
 
@@ -371,25 +380,30 @@ export default function Dashboard() {
 
                         {activity.length > 0 ? (
                             <ul className="dash-activity" ref={activityListRef}>
-                                {activity.slice(0, visibleActivityCount).map((a) => (
-                                    <li key={a.id} className={`dash-activity__ticket dash-activity__ticket--${a.level || 'info'}`}>
-                                        <div className="dash-activity__ticket-content">
-                                            <span className="dash-activity__title">
-                                                {a.title}
-                                            </span>
-                                            {a.detail && (
-                                                <span className="dash-activity__detail">
-                                                    {a.detail}
+                                {activity
+                                    .slice(0, visibleActivityCount)
+                                    .map((a) => (
+                                        <li
+                                            key={a.id}
+                                            className={`dash-activity__ticket dash-activity__ticket--${a.level || "info"}`}
+                                        >
+                                            <div className="dash-activity__ticket-content">
+                                                <span className="dash-activity__title">
+                                                    {a.title}
                                                 </span>
-                                            )}
-                                        </div>
-                                        <div className="dash-activity__ticket-meta">
-                                            <span className="dash-activity__at">
-                                                {a.at}
-                                            </span>
-                                        </div>
-                                    </li>
-                                ))}
+                                                {a.detail && (
+                                                    <span className="dash-activity__detail">
+                                                        {a.detail}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="dash-activity__ticket-meta">
+                                                <span className="dash-activity__at">
+                                                    {a.at}
+                                                </span>
+                                            </div>
+                                        </li>
+                                    ))}
                             </ul>
                         ) : (
                             <div className="dash-empty">

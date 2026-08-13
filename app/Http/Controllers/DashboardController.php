@@ -6,6 +6,7 @@ use App\Models\ActivityLog;
 use App\Models\GeneralLedger;
 use App\Models\Upload;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -102,10 +103,15 @@ class DashboardController extends Controller
         // Disbursed = NET, not gross. Gross includes withholding tax that
         // never actually leaves DOST's account via ADA/check - NET is what
         // was genuinely paid out. Confirmed 2026-07-30 (was gross_amount).
+        //
+        // ...plus the numeric-RC half of a remittance row, which is money that
+        // leaves the account on the same ADA/check but is not in NET. Summing
+        // NET alone under-stated CY2026 by 5,472,720.52. This is the same rule
+        // the ROD uses - see GeneralLedger::ROD_AMOUNT_SQL (2026-08-13).
         $disbursed = (float) (clone $scoped)
             ->transactions()
             ->disbursed()
-            ->sum('net_amount');
+            ->sum(DB::raw(GeneralLedger::ROD_AMOUNT_SQL));
 
         return [
             'allotted'    => $allotted,
@@ -132,10 +138,12 @@ class DashboardController extends Controller
             ->groupBy('ledger_month')
             ->pluck('total', 'ledger_month');
 
+        // Same NET + numeric-RC rule as stats(), so the trend bars and the
+        // headline tile can never disagree.
         $disbursedByMonth = GeneralLedger::where('upload_id', $upload->id)
             ->transactions()
             ->disbursed()
-            ->selectRaw('ledger_month, SUM(net_amount) as total')
+            ->selectRaw('ledger_month, SUM('.GeneralLedger::ROD_AMOUNT_SQL.') as total')
             ->groupBy('ledger_month')
             ->pluck('total', 'ledger_month');
 
@@ -156,26 +164,36 @@ class DashboardController extends Controller
     private function alerts(?Upload $upload): array
     {
         if (! $upload || ! $upload->hasRows()) {
-            return ['unrouted' => 0, 'stale' => false];
+            return ['unreviewed' => 0, 'stale' => false];
         }
 
-        // Transactions whose charging code matches no known reference.
-        // Codes that are known but out of Phase 1 scope are excluded here, so
-        // they do not masquerade as errors.
-        $unrouted = GeneralLedger::where('upload_id', $upload->id)
+        // Transactions on a charging code nobody has confirmed: one the seeder
+        // discovered in the ledger and classified by rule (source='ledger'),
+        // rather than one she maintains in the Ref sheet or mapped by hand with
+        // `ledger:alias`. Their money IS counted - the class is derived the
+        // same way Ref codes derive theirs - so this asks her to confirm a
+        // guess, it does not report lost rows.
+        //
+        // Codes that are known but simply out of Phase 1 SL scope are excluded,
+        // so they do not masquerade as errors.
+        $unreviewed = GeneralLedger::where('upload_id', $upload->id)
             ->transactions()
             ->whereNotNull('charging_code')
+            ->where('charging_code', '<>', '')
             ->whereNotExists(function ($q) {
                 $q->select('id')
                   ->from('account_references')
                   ->whereColumn('account_references.code', 'general_ledgers.charging_code')
-                  ->where('account_references.ref_type', 'charging');
+                  ->where('account_references.ref_type', 'charging')
+                  ->where(fn ($w) => $w
+                      ->where('account_references.source', 'ref')
+                      ->orWhereNotNull('account_references.canonical_code'));
             })
             ->count();
 
         return [
-            'unrouted' => $unrouted,
-            'stale'    => false,
+            'unreviewed' => $unreviewed,
+            'stale'      => false,
         ];
     }
 }

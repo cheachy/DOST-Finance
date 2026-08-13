@@ -20,7 +20,6 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/imports', [ImportController::class, 'store'])->name('imports.store');
 
-    // --- stubs, so the sidebar links resolve while phases 2+ are built -------
     Route::get('/ledger', [LedgerController::class, 'index'])->name('ledger');
     Route::get('/subsidiary-ledgers', [SlController::class, 'index'])->name('subsidiary-ledgers');
     Route::get('/reports', fn () => Inertia::render('reports/Index'))->name('reports');

@@ -124,6 +124,7 @@ return new class extends Migration
             // and UNISSUED BY CASHIER which has no W code at all. ~639 rows in
             // the CY2026 workbook. Informational - A/C alone gates the ROD.
             $t->string('status_flag')->nullable();
+            $t->jsonb('rod_actual')->nullable(); // her real AR-AW values: {cur_ps,cur_mooe,cur_co,prior_ps,prior_mooe,prior_co}
 
             // money (stable, typed - these drive every aggregation)
             $t->decimal('charging_breakdown', 15, 2)->nullable();

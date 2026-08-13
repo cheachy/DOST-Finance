@@ -46,6 +46,7 @@ class AccountReferenceSeeder extends Seeder
     public function run(): void
     {
         $this->syncCanonical();
+        $this->syncObserved();
         $this->mirrorAliases();
 
         $total = DB::table('account_references')->where('ref_type', 'charging')->count();
@@ -73,6 +74,9 @@ class AccountReferenceSeeder extends Seeder
             $facts = [
                 'allotment_class' => $this->classOf($code),
                 'is_prior_year' => $this->isPriorYear($code),
+                // Ref is authoritative. If this code was auto-discovered from
+                // the ledger on an earlier run, appearing in Ref promotes it.
+                'source' => 'ref',
             ];
 
             if (! $existing->has($code)) {
@@ -85,6 +89,78 @@ class AccountReferenceSeeder extends Seeder
                 ['ref_type' => 'charging', 'code' => $code],
                 $facts
             );
+        }
+    }
+
+    /**
+     * Register charging codes that the LEDGER uses but the Ref sheet does not.
+     *
+     * The Ref sheet is a curated list and the ledger is typed by hand, so the
+     * two drift: "Green Wave" vs Ref's "SAA-Green Wave", "Regular-Onelab" vs
+     * "Regular MOOE (Onelab)", "SAA-iFWD Cntg" vs "IFWD Cntg". Before this ran,
+     * such a code matched no reference row, so it belonged to no allotment
+     * class and contributed to NO ROD column - the only symptom was a total
+     * that came out low. 14 codes on 61 transactions were being dropped that
+     * way in CY2026.
+     *
+     * Nothing here is hardcoded and nothing is guessed by similarity. A code's
+     * class comes from classOf() and its prior-year status from isPriorYear() -
+     * the SAME rules already applied to every Ref code, read off the code
+     * string itself. So next year's brand-new code classifies correctly on
+     * import with no code change, no migration and no alias to remember.
+     *
+     * What is NOT derived is sl_tab: which subsidiary ledger a fund belongs to
+     * is a scope decision, so these land unrouted and inactive, flagged
+     * source='ledger' for the dashboard to put in front of her. Confirm one by
+     * pointing it at its real code (`ledger:alias add`, which makes it an alias
+     * and inherits the tab) or by giving it a tab (`ledger:sl-tab`).
+     *
+     * Only TRANSACTION rows are scanned. Subtotal rows carry a number in the
+     * charging column (that is how the parser recognises them) and header rows
+     * carry the literal "SL", none of which are funds.
+     */
+    private function syncObserved(): void
+    {
+        $upload = Upload::where('is_current', true)->where('status', 'done')->latest('id')->first();
+        if (! $upload) {
+            return;
+        }
+
+        $known = DB::table('account_references')
+            ->where('ref_type', 'charging')
+            ->pluck('code')
+            ->flip();
+
+        $codes = DB::table('general_ledgers')
+            ->where('upload_id', $upload->id)
+            ->where('row_type', 'transaction')
+            ->whereNotNull('charging_code')
+            ->where('charging_code', '<>', '')
+            ->distinct()
+            ->pluck('charging_code');
+
+        $added = 0;
+        foreach ($codes as $code) {
+            if ($known->has($code) || is_numeric(trim($code))) {
+                continue;
+            }
+
+            DB::table('account_references')->insert([
+                'ref_type' => 'charging',
+                'code' => $code,
+                'label' => $code,
+                'allotment_class' => $this->classOf($code),
+                'is_prior_year' => $this->isPriorYear($code),
+                'sl_tab' => null,
+                'is_active' => false,
+                'source' => 'ledger',
+            ]);
+            $added++;
+        }
+
+        if ($added) {
+            $this->command?->warn("Discovered {$added} charging code(s) in the ledger that are not in the Ref sheet.");
+            $this->command?->line('  Classified by rule and reported on the dashboard for review.');
         }
     }
 

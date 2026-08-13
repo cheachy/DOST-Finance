@@ -80,6 +80,7 @@ class LedgerRowParser
             'tax_details' => json_encode((object) $rec['tax_details']),
             'extras' => json_encode((object) $rec['extras']),
             'raw_row' => json_encode((object) $rec['raw_row']),
+            'rod_actual' => json_encode((object) ($rec['rod_actual'] ?? [])),
             'created_at' => now(),
         ];
 
@@ -176,6 +177,32 @@ class LedgerRowParser
             'extras' => [],
             'raw_row' => [],
         ];
+
+        // Her actual ROD figures, captured as typed - never generated. Current-year
+        // only matters for comparison (ledger:rod-verify); prior-year is captured
+        // too, purely for reference, since there is no rule to generate it against.
+        //
+        // A/C-GATED, same as generation. The summary block under each month (A/C
+        // breakdown, PS TAX/ACCTG, monthly totals) physically shares rows with the
+        // NYDD vendor listing - those rows have real payees and classify as
+        // transactions, but their AR-AW values are summary figures, not per-row
+        // ROD entries. Verified 2026-08-13: every genuine per-row ROD value sits
+        // on a row whose A/C column is 'A' or 'C'; every contaminated row does not.
+        // Gate on the RAW payment mode - the extras-normalization below nulls
+        // non-A/C modes, so this must run first.
+        $rawMode = $this->get($row, 'payment_mode');
+        $rawMode = is_string($rawMode) ? trim($rawMode) : $rawMode;
+
+        $rec['rod_actual'] = in_array($rawMode, ['A', 'C'], true)
+            ? [
+                'cur_ps'     => $this->get($row, 'cur_ps'),
+                'cur_mooe'   => $this->get($row, 'cur_mooe'),
+                'cur_co'     => $this->get($row, 'cur_co'),
+                'prior_ps'   => $this->get($row, 'prior_ps'),
+                'prior_mooe' => $this->get($row, 'prior_mooe'),
+                'prior_co'   => $this->get($row, 'prior_co'),
+            ]
+            : [];
 
         foreach ($this->cfg['fields'] as $field) {
             $rec[$field] = $this->get($row, $field);

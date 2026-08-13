@@ -191,6 +191,12 @@ class LedgerHeaderAnalyzer
 
         $h = $this->cfg['header'];
 
+        // ROD block: PS/MOOE/CO repeat under two different super-labels. Must be
+        // checked BEFORE by_main, since the main label alone is ambiguous.
+        if (isset($h['rod_super'][$s]) && in_array($m, $h['rod_classes'], true)) {
+            return $h['rod_super'][$s] . '_' . $m;   // e.g. 'cur_ps', 'prior_mooe'
+        }
+
         if (array_key_exists($m, $h['by_main'])) {
             return $h['by_main'][$m];
         }

@@ -58,6 +58,15 @@ return [
         // split columns
         'dv_main' => 'dv#',        // two merged cols -> dv_prefix, dv_no
         'obr_split_from' => 'obr_prefix', // obr_no = the column right after OBR #
+
+        // PS/MOOE/CO appear TWICE in the header (once under CURRENT YEAR ALLOTMENT,
+        // once under PRIOR YEAR ALLOTMENT) - disambiguated by the super-label, checked
+        // in canon() BEFORE by_main, since 'ps'/'mooe'/'co' alone are ambiguous.
+        'rod_super' => [
+            'current year allotment' => 'cur',
+            'prior year allotment'   => 'prior',
+        ],
+        'rod_classes' => ['ps', 'mooe', 'co'],
     ],
 
     /*
@@ -124,6 +133,22 @@ return [
 
         // prior-year gate: these charging codes mean prior-year allotment
         'prior_year_codes' => ['prior year payables', 'prior years payable', '2025 nydd'],
+
+        /*
+         | Second prior-year gate, which OVERRIDES the charging code.
+         |
+         | A prior-year not-yet-due obligation that became due-and-demandable
+         | this year keeps its original current-year charging code (e.g.
+         | "SAA-SARAI") but is paid from the PRIOR-year allotment. Nothing in
+         | the typed columns says so - the sheet records it only as a legend
+         | fill colour, so the flag has to win over the code.
+         |
+         | Verified 2026-08-13: 93 disbursed rows carry this flag, and every
+         | one was typed into her prior-year ROD columns (8,356,033.81 total),
+         | none into current-year. Without this gate, May MOOE over-counted by
+         | 3,952,494.51. See GeneralLedger::scopeCurrentYearAllotment().
+         */
+        'prior_year_flags' => ['PY NY BECAME DD ON CURRENT YEAR'],
 
         // Prior-year PS/MOOE/CO is NOT auto-derived. The accountant confirmed
         // there is no rule; she annotates the particulars manually. So prior-year
