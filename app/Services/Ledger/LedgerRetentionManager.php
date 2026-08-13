@@ -4,6 +4,7 @@ namespace App\Services\Ledger;
 
 use App\Models\GeneralLedger;
 use App\Models\Upload;
+use Illuminate\Support\Facades\Log;
 
 class LedgerRetentionManager
 {
@@ -73,8 +74,16 @@ class LedgerRetentionManager
     {
         $path = $upload->stored_path;
 
-        if ($path && is_file($path)) {
-            @unlink($path);
+        if ($path && is_file($path) && ! @unlink($path)) {
+            // Leave file_deleted_at null so the next import retries this
+            // upload instead of silently forgetting it was never removed
+            // (unlink can fail transiently - permissions, AV/indexer lock).
+            Log::warning('Ledger retention: failed to delete stored file', [
+                'upload_id' => $upload->id,
+                'path' => $path,
+            ]);
+
+            return;
         }
 
         $upload->forceFill(['file_deleted_at' => now()])->save();

@@ -273,10 +273,13 @@ return [
      | data behind it is gone.
      |
      | The current workbook file is kept because export uses it as the template
-     | that preserves the government format. Superseded files have no such use.
+     | that preserves the government format - and export writes into that file
+     | in place, so the newest-1 (the previous current) is also kept as the
+     | last clean copy until the new one has proven itself. Superseded files
+     | beyond that have no such use.
      */
     'keep_row_snapshots' => 2,   // snapshots that retain their general_ledgers rows
-    'keep_files' => 1,   // workbook files kept on disk (0 = delete after parse)
+    'keep_files' => 2,   // workbook files kept on disk (0 = delete after parse)
 
     /*
      | raw_row stores the full original row per record. It roughly triples the
