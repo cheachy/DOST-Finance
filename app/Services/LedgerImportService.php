@@ -145,11 +145,11 @@ class LedgerImportService
     {
         $reader = IOFactory::createReaderForFile($absolutePath);
         $reader->setReadDataOnly(true);
-        $reader->setReadFilter(new class implements \PhpOffice\PhpSpreadsheet\Reader\IReadFilter {
+        $limit = $this->cfg['import_row_limit'] ?? 10000;
+        $reader->setReadFilter(new class($limit) implements \PhpOffice\PhpSpreadsheet\Reader\IReadFilter {
+            public function __construct(private int $limit) {}
             public function readCell(string $columnAddress, int $row, string $worksheetName = ''): bool {
-                // Safeguard against bloated Excel files with 1,000,000 empty rows
-                // which cause 2GB Memory Exhaustion fatal errors.
-                return $row <= 10000;
+                return $row <= $this->limit;
             }
         });
         $spreadsheet = $reader->load($absolutePath);

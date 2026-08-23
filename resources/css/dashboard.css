@@ -868,3 +868,13 @@
         grid-row: auto;
     }
 }
+
+
+.reports-title { margin: 0 0 4px; }
+.reports-desc { margin: 0 0 18px; font-size: 13px; color: var(--aslr-muted); max-width: 620px; line-height: 1.6; }
+.reports-subtext { margin: 0 0 18px; font-size: 12px; color: var(--aslr-faint); max-width: 620px; line-height: 1.6; }
+.reports-error { font-size: 13px; color: #b23b3b; }
+.reports-error--margin { margin-top: 14px; }
+.reports-success { font-size: 13px; font-weight: 600; color: var(--dost-blue); }
+.reports-missing { margin-top: 14px; font-size: 13px; color: var(--aslr-muted); }
+.reports-actions { display: flex; align-items: center; gap: 14px; }

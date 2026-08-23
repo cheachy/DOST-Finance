@@ -89,18 +89,10 @@ export default function Index() {
                         </div>
                     ) : (
                         <>
-                            <h2 style={{ margin: "0 0 4px" }}>
+                            <h2 className="reports-title">
                                 ROD export — testing
                             </h2>
-                            <p
-                                style={{
-                                    margin: "0 0 18px",
-                                    fontSize: 13,
-                                    color: "var(--aslr-muted)",
-                                    maxWidth: 620,
-                                    lineHeight: 1.6,
-                                }}
-                            >
+                            <p className="reports-desc">
                                 Writes the generated current-year PS/MOOE/CO
                                 figures into a copy of{" "}
                                 <strong>{snapshot.original_name}</strong> (
@@ -111,15 +103,7 @@ export default function Index() {
                                 only A/C-gated current-year transaction rows
                                 receive a value.
                             </p>
-                            <p
-                                style={{
-                                    margin: "0 0 18px",
-                                    fontSize: 12,
-                                    color: "var(--aslr-faint)",
-                                    maxWidth: 620,
-                                    lineHeight: 1.6,
-                                }}
-                            >
+                            <p className="reports-subtext">
                                 Runs in the background — the real workbook is
                                 large enough that writing it back out takes a
                                 few minutes. This page checks back
@@ -127,30 +111,18 @@ export default function Index() {
                             </p>
 
                             {!snapshot.has_file ? (
-                                <p style={{ fontSize: 13, color: "#b23b3b" }}>
+                                <p className="reports-error">
                                     The original workbook file for this
                                     snapshot is no longer on disk, so it can't
                                     be used as an export template.
                                 </p>
                             ) : status === "queued" ? (
-                                <p
-                                    style={{
-                                        fontSize: 13,
-                                        fontWeight: 600,
-                                        color: "var(--dost-blue)",
-                                    }}
-                                >
+                                <p className="reports-success">
                                     Generating — this page will update
                                     automatically once it's ready.
                                 </p>
                             ) : (
-                                <div
-                                    style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: 14,
-                                    }}
-                                >
+                                <div className="reports-actions">
                                     <button
                                         type="button"
                                         className="dash-btn dash-btn--primary"
@@ -178,13 +150,7 @@ export default function Index() {
                             )}
 
                             {errors?.rod_export && (
-                                <p
-                                    style={{
-                                        marginTop: 14,
-                                        fontSize: 13,
-                                        color: "#b23b3b",
-                                    }}
-                                >
+                                <p className="reports-error reports-error--margin">
                                     {errors.rod_export}
                                 </p>
                             )}
@@ -192,13 +158,7 @@ export default function Index() {
                             {status === "done" &&
                                 snapshot.rod_export_missing &&
                                 !errors?.rod_export && (
-                                    <p
-                                        style={{
-                                            marginTop: 14,
-                                            fontSize: 13,
-                                            color: "var(--aslr-muted)",
-                                        }}
-                                    >
+                                    <p className="reports-missing">
                                         The last export
                                         {snapshot.rod_exported_at
                                             ? ` (${snapshot.rod_exported_at})`
@@ -210,13 +170,7 @@ export default function Index() {
                                 )}
 
                             {status === "failed" && (
-                                <p
-                                    style={{
-                                        marginTop: 14,
-                                        fontSize: 13,
-                                        color: "#b23b3b",
-                                    }}
-                                >
+                                <p className="reports-error reports-error--margin">
                                     Last attempt failed:{" "}
                                     {snapshot.rod_export_error ??
                                         "unknown error"}

@@ -19,6 +19,7 @@ return [
     'sheet' => 'MDS 101',
     'header_scan_max' => 40,   // how many top rows to scan for the header band
     'blank_run_limit' => 80,   // stop after this many consecutive blank rows
+    'import_row_limit' => 10000, // maximum rows to load during import to prevent memory exhaustion
 
     // every one of these labels must appear on a row for it to be the header row
     'anchors' => ['obr #', 'payee', 'charging', 'rc', 'particulars'],
