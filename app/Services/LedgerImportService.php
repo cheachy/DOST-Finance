@@ -141,10 +141,18 @@ class LedgerImportService
         return $upload->fresh();
     }
 
-    protected function loadSheet(string $path): Worksheet
+    protected function loadSheet(string $absolutePath): Worksheet
     {
-        $reader = IOFactory::createReaderForFile($path);
-        $spreadsheet = $reader->load($path);
+        $reader = IOFactory::createReaderForFile($absolutePath);
+        $reader->setReadDataOnly(true);
+        $reader->setReadFilter(new class implements \PhpOffice\PhpSpreadsheet\Reader\IReadFilter {
+            public function readCell(string $columnAddress, int $row, string $worksheetName = ''): bool {
+                // Safeguard against bloated Excel files with 1,000,000 empty rows
+                // which cause 2GB Memory Exhaustion fatal errors.
+                return $row <= 10000;
+            }
+        });
+        $spreadsheet = $reader->load($absolutePath);
 
         return $spreadsheet->getSheetByName($this->cfg['sheet'])
             ?? $spreadsheet->getActiveSheet();

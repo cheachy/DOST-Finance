@@ -24,6 +24,7 @@ class Upload extends Model
         'header_map' => 'array',
         'rows_pruned_at' => 'datetime',
         'file_deleted_at' => 'datetime',
+        'rod_exported_at' => 'datetime',
     ];
 
     public function generalLedgers(): HasMany
@@ -57,6 +58,14 @@ class Upload extends Model
         return $this->file_deleted_at === null
             && $this->stored_path
             && is_file($this->stored_path);
+    }
+
+    /** The most recent ROD export finished and its file is still on disk. */
+    public function hasRodExport(): bool
+    {
+        return $this->rod_export_status === 'done'
+            && $this->rod_export_path
+            && is_file($this->rod_export_path);
     }
 
     /** Months present in this snapshot, ascending. */

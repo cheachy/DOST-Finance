@@ -64,7 +64,7 @@ return [
         // in canon() BEFORE by_main, since 'ps'/'mooe'/'co' alone are ambiguous.
         'rod_super' => [
             'current year allotment' => 'cur',
-            'prior year allotment'   => 'prior',
+            'prior year allotment' => 'prior',
         ],
         'rod_classes' => ['ps', 'mooe', 'co'],
     ],
@@ -257,6 +257,22 @@ return [
         'subtotal' => ['TOTAL', 'PS TAX', 'PS ACCTG', 'PS BUDGET', 'ACCOUNTING', 'BUDGET'],
         'section' => ['OBLIGATION', 'BECAME DD', 'BECOME DD', 'PRIOR MONTHS', 'NYDD', 'CANCELLED', 'REVERSION'],
     ],
+
+    /*
+     | ROD write-back scope.
+     |
+     | The export is being proven one slice at a time rather than switched on
+     | for the whole workbook at once: current-year PS/MOOE/CO, on the MDS 101
+     | sheet, for THESE MONTHS ONLY. January and February first, because their
+     | totals are already independently verified (Jan PS 2,515,888.28, Jan MOOE
+     | 656,995.30, CO 0.00), so a wrong cell shows up immediately against a
+     | number we know.
+     |
+     | Everything outside these months is left exactly as she typed it - the
+     | export writes nothing there at all. Widen this list (or set it to null
+     | for every month) only once the written slice has been signed off.
+     */
+    'rod_export_months' => [],
 
     /*
      | Retention.
